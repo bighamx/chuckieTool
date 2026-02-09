@@ -82,6 +82,8 @@ class RemoteControl {
             // 其他
             'gitignore', 'gitattributes', 'editorconfig', 'dockerfile'
         ];
+        this.commandHistory = [];
+        this.historyIndex = -1;
         this.init();
     }
 
@@ -444,12 +446,17 @@ class RemoteControl {
         });
 
         // Terminal
-        document.getElementById('connect-btn').addEventListener('click', () => this.connectTerminal());
-        document.getElementById('disconnect-btn').addEventListener('click', () => this.disconnectTerminal());
+        document.getElementById('terminal-toggle-btn').addEventListener('click', () => this.toggleTerminal());
         document.getElementById('clear-btn').addEventListener('click', () => this.clearTerminal());
-        document.getElementById('terminal-input').addEventListener('keypress', (e) => {
+        document.getElementById('terminal-input').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 this.sendCommand();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.navigateHistory('up');
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.navigateHistory('down');
             }
         });
 
@@ -1847,6 +1854,15 @@ class RemoteControl {
         return vkCodeMap[code] || null;
     }
 
+    // 切换终端连接状态
+    toggleTerminal() {
+        if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            this.disconnectTerminal();
+        } else {
+            this.connectTerminal();
+        }
+    }
+
     connectTerminal() {
         if (this.websocket) {
             this.disconnectTerminal();
@@ -1858,16 +1874,16 @@ class RemoteControl {
 
         this.websocket = new WebSocket(wsUrl);
         const statusEl = document.getElementById('ws-status');
-        const connectBtn = document.getElementById('connect-btn');
-        const disconnectBtn = document.getElementById('disconnect-btn');
+        const toggleBtn = document.getElementById('terminal-toggle-btn');
         const terminalSelect = document.getElementById('terminal-type');
         const output = document.getElementById('terminal-output');
 
         this.websocket.onopen = () => {
             statusEl.textContent = `已连接 (${terminalType.toUpperCase()})`;
             statusEl.classList.add('connected');
-            connectBtn.disabled = true;
-            disconnectBtn.disabled = false;
+            toggleBtn.textContent = '断开连接';
+            toggleBtn.classList.remove('btn-primary');
+            toggleBtn.classList.add('btn-danger');
             terminalSelect.disabled = true;  // 连接时禁用切换
             output.innerHTML = '';
         };
@@ -1880,8 +1896,9 @@ class RemoteControl {
         this.websocket.onclose = () => {
             statusEl.textContent = '未连接';
             statusEl.classList.remove('connected');
-            connectBtn.disabled = false;
-            disconnectBtn.disabled = true;
+            toggleBtn.textContent = '连接终端';
+            toggleBtn.classList.remove('btn-danger');
+            toggleBtn.classList.add('btn-primary');
             terminalSelect.disabled = false;  // 断开时启用切换
             this.websocket = null;
         };
@@ -1904,13 +1921,33 @@ class RemoteControl {
         const command = input.value;
 
         if (this.websocket && this.websocket.readyState === WebSocket.OPEN && command) {
-            // 前端手动回显命令
-            const output = document.getElementById('terminal-output');
-            output.innerHTML += `<div class="command-line"><span class="prompt">></span> ${this.escapeHtml(command)}</div>`;
-            output.scrollTop = output.scrollHeight;
-
+            // 后端会实时返回完整输出（包括命令回显），无需前端手动回显
             this.websocket.send(command);
+
+            // 更新命令历史
+            this.commandHistory.push(command);
+            this.historyIndex = this.commandHistory.length; // 重置索引到最新
+
             input.value = '';
+        }
+    }
+
+    navigateHistory(direction) {
+        if (this.commandHistory.length === 0) return;
+
+        if (direction === 'up') {
+            if (this.historyIndex > 0) {
+                this.historyIndex--;
+                document.getElementById('terminal-input').value = this.commandHistory[this.historyIndex];
+            }
+        } else if (direction === 'down') {
+            if (this.historyIndex < this.commandHistory.length - 1) {
+                this.historyIndex++;
+                document.getElementById('terminal-input').value = this.commandHistory[this.historyIndex];
+            } else {
+                this.historyIndex = this.commandHistory.length;
+                document.getElementById('terminal-input').value = '';
+            }
         }
     }
 
@@ -2172,8 +2209,8 @@ class RemoteControl {
                 <td class="process-name-cell">
                     <div class="process-name-main">${this.escapeHtml(displayName)}</div>
                     ${proc.description && proc.description !== proc.name
-                        ? `<div class="process-name-sub">${this.escapeHtml(proc.name)}</div>`
-                        : ''}
+                    ? `<div class="process-name-sub">${this.escapeHtml(proc.name)}</div>`
+                    : ''}
                 </td>
                 <td class="process-title-cell">${titleText}</td>
                 <td class="process-pid">${proc.id}</td>
@@ -2186,7 +2223,7 @@ class RemoteControl {
         }).join('');
 
         const filterLabel = this.processFilter === 'windowed' ? ' (应用)' :
-                            this.processFilter === 'background' ? ' (后台)' : '';
+            this.processFilter === 'background' ? ' (后台)' : '';
         countEl.textContent = `显示 ${filtered.length} 个进程${filterLabel}` +
             (this.processSearchTerm ? ` (搜索中)` : ` · 应用 ${windowedCount} · 后台 ${bgCount} · 总计 ${this.processes.length}`);
     }
@@ -3068,12 +3105,12 @@ volumes:
         const lower = filename.toLowerCase();
         // 常见的 compose 文件名模式
         return lower === 'docker-compose.yml' ||
-               lower === 'docker-compose.yaml' ||
-               lower === 'compose.yml' ||
-               lower === 'compose.yaml' ||
-               lower === 'docker-compose.override.yml' ||
-               lower === 'docker-compose.override.yaml' ||
-               (lower.includes('compose') && (lower.endsWith('.yml') || lower.endsWith('.yaml')));
+            lower === 'docker-compose.yaml' ||
+            lower === 'compose.yml' ||
+            lower === 'compose.yaml' ||
+            lower === 'docker-compose.override.yml' ||
+            lower === 'docker-compose.override.yaml' ||
+            (lower.includes('compose') && (lower.endsWith('.yml') || lower.endsWith('.yaml')));
     }
 
     /**

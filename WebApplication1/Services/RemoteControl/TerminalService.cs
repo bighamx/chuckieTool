@@ -148,7 +148,7 @@ public class TerminalSession : IDisposable
         else // CMD
         {
             startInfo.FileName = "cmd.exe";
-            startInfo.Arguments = "/Q"; // /Q 关闭回显
+            // 不使用 /Q，保留命令回显
 
             if (_useUtf8)
             {
@@ -175,12 +175,21 @@ public class TerminalSession : IDisposable
     {
         try
         {
+            var buffer = new char[256];
             while (!_disposed && _process != null && !_process.HasExited)
             {
-                var line = await reader.ReadLineAsync();
-                if (line == null) break;
+                // 使用 ReadAsync 实时读取字符，而不是按行读取
+                // 这样可以立即显示命令提示符等不以换行符结尾的输出
+                var bytesRead = await reader.ReadAsync(buffer, 0, buffer.Length);
+                if (bytesRead == 0)
+                {
+                    // 没有数据可读，短暂等待后重试
+                    await Task.Delay(10);
+                    continue;
+                }
 
-                await SendMessageAsync(line + "\r\n");
+                var output = new string(buffer, 0, bytesRead);
+                await SendMessageAsync(output);
             }
         }
         catch (Exception)
