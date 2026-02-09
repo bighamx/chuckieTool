@@ -204,19 +204,76 @@ ChuckieHelper.WebApi.exe
 
 ### 方式二：IIS 部署（生产环境）
 
-1. 安装 [ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0)
+#### 步骤 1：安装必要组件
 
-2. 发布应用
+1. **启用 IIS**
+   - 打开「控制面板」→「程序」→「启用或关闭 Windows 功能」
+   - 勾选以下项目：
+     - ✅ **Internet Information Services**
+     - ✅ **Web 管理工具** → **IIS 管理控制台**
+     - ✅ **万维网服务** → **应用程序开发功能** → **ASP.NET 4.8**
+     - ✅ **万维网服务** → **常见 HTTP 功能**（全部勾选）
+
+2. **安装 ASP.NET Core Hosting Bundle**
+   - 下载 [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0)
+   - 运行安装程序，安装完成后**重启 IIS**（或重启电脑）
+
+#### 步骤 2：发布应用
 
 ```bash
-dotnet publish -c Release -o C:\inetpub\ChuckieHelper
+dotnet publish WebApplication1/ChuckieHelper.WebApi.csproj -c Release -o C:\inetpub\ChuckieHelper
 ```
 
-3. 在 IIS 中创建网站，指向发布目录
+> 📁 发布后，将你的 `appsettings.json` 复制到 `C:\inetpub\ChuckieHelper` 目录
 
-4. 配置应用程序池：
-   - .NET CLR 版本：`无托管代码`
-   - 如需远程控制功能，设置标识为 `LocalSystem`
+#### 步骤 3：创建应用程序池
+
+1. 打开「IIS 管理器」（运行 `inetmgr`）
+2. 右键「应用程序池」→「添加应用程序池」
+   - **名称**：`ChuckieHelperPool`
+   - **.NET CLR 版本**：`无托管代码`
+   - **托管管道模式**：`集成`
+3. 点击「确定」创建
+
+#### 步骤 4：配置 LocalSystem 身份（重要！）
+
+> ⚠️ **仅在需要远程控制功能时配置**。LocalSystem 具有最高权限，请谨慎使用。
+
+1. 在「应用程序池」中找到 `ChuckieHelperPool`
+2. 右键 →「高级设置」
+3. 找到「进程模型」→「标识」，点击右侧的 `...` 按钮
+4. 选择「内置帐户」→ 下拉选择 **LocalSystem**
+5. 点击「确定」保存
+
+
+
+#### 步骤 5：创建网站
+
+1. 在 IIS 管理器中，右键「网站」→「添加网站」
+2. 配置如下：
+   - **站点名称**：`ChuckieHelper`
+   - **应用程序池**：选择 `ChuckieHelperPool`
+   - **物理路径**：`C:\inetpub\ChuckieHelper`
+   - **绑定**：
+     - 类型：`http`（或 `https`）
+     - IP 地址：`全部未分配`
+     - 端口：`5104`（或你希望的端口）
+3. 点击「确定」创建
+
+#### 步骤 6：验证部署
+
+1. 启动网站（右键网站 →「管理网站」→「启动」）
+2. 浏览器访问：`http://localhost:5104/`
+3. 使用 `appsettings.json` 中配置的账号密码登录
+
+#### 常见问题排查
+
+| 问题 | 解决方案 |
+|------|----------|
+| 502.5 错误 | 检查 Hosting Bundle 是否正确安装，尝试重启 IIS |
+| 500 错误 | 检查 `appsettings.json` 是否存在且格式正确 |
+| 权限不足 | 确认应用程序池使用 LocalSystem 身份运行 |
+| 端口被占用 | 更换端口或停止占用端口的服务 |
 
 > ⚠️ **安全提示**：`appsettings.json` 包含敏感信息，请勿提交到公开仓库！
 
