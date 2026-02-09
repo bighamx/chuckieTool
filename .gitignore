@@ -125,3 +125,6 @@ ChuckieHelper/appsettings.Development.json
 WebApplication1/hangfire.db
 WebApplication1/hangfire.db-shm
 WebApplication1/hangfire.db-wal
+
+# ChuckieHelper project (excluded from public repo)
+ChuckieHelper/
