@@ -1,0 +1,145 @@
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ChuckieHelper</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-primary: #58a6ff;
+            --accent-danger: #f85149;
+            --border-color: #30363d;
+            --border-radius: 12px;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #0a0e12 100%);
+        }
+
+        .login-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: var(--shadow);
+        }
+
+        .login-header { text-align: center; margin-bottom: 32px; }
+        .login-header .logo svg { color: var(--accent-primary); margin-bottom: 16px; }
+        .login-header h1 {
+            font-size: 28px; font-weight: 600; margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--accent-primary), #a855f7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .login-header p { color: var(--text-secondary); font-size: 14px; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-secondary); }
+        .form-group input {
+            width: 100%; padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: var(--transition);
+        }
+        .form-group input:focus {
+            outline: none; border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+        }
+
+        .btn-primary {
+            width: 100%; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 500;
+            border: none; cursor: pointer; transition: var(--transition);
+            background: linear-gradient(135deg, var(--accent-primary), #3b82f6); color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(88, 166, 255, 0.3); }
+
+        .error-message { color: var(--accent-danger); font-size: 14px; margin-top: 16px; text-align: center; min-height: 20px; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="login-header">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+            </div>
+            <h1>ChuckieHelper</h1>
+            <p>System Authentication</p>
+        </div>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn-primary">Login</button>
+            <div id="login-error" class="error-message"></div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('login-error');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Set Cookie for MVC access
+                    // Note: In a real app, use HttpOnly cookies set by the server. 
+                    // Here we adhere to the plan of setting it client-side or relying on the server response if it set one (currently it doesn't).
+                    // Since the server doesn't set the cookie in the Login endpoint, we must do it here or modify the endpoint.
+                    // The plan said "Implement Login logic (AJAX Post + Cookie setting)".
+                    document.cookie = `access_token=${data.token}; path=/; max-age=86400; samesite=strict`;
+                    
+                    // Also set localStorage for RemoteControl app compatibility
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('username', data.username);
+
+                    window.location.href = '/';
+                } else {
+                    errorDiv.textContent = data.message || 'Login failed';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Connection failed';
+            }
+        });
+    </script>
+</body>
+</html>
