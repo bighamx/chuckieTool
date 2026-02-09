@@ -1,65 +1,161 @@
-## ChuckieHelper WebApi 项目说明与部署文档
+# ChuckieHelper
 
-### 项目作用与整体原理
+<div align="center">
 
-`ChuckieHelper WebApi` 是一个基于 **.NET 8** 的 Web 后台管理与远程控制服务，主要功能包括：
+**基于 .NET 8 的 Web 后台管理与远程控制服务**
 
-- **任务调度**：通过 Hangfire 定时执行各种后台任务（例如示例任务、qBittorrent 相关任务、DDNS 更新等）。
-- **远程系统操作**：提供系统信息查询、文件操作、终端命令执行（WebSocket 远程终端）等能力。
-- **远程输入控制**：通过 WebSocket 通道远程控制目标机器的键鼠输入，用于远程桌面辅助操作。
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com/)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows)](https://www.microsoft.com/windows)
 
-整体运行原理简要说明：
-
-- Web 端通过 HTTP API 和 WebSocket 与服务端交互（例如 `/ws/terminal`、`/ws/input`）。
-- 服务端启动后：
-  - 使用 Kestrel（自宿主）或通过 IIS 反向代理对外提供 HTTP/HTTPS 服务。
-  - 挂载 Hangfire Server 并注册定时任务，暴露 `/hangfire` 控制面板。
-  - 对终端命令、键鼠输入等敏感操作通过后台服务（如 `SystemService`、`TerminalService`）在本机执行。
-- 远程控制与后台任务的访问，都通过 JWT 鉴权和 Web 登录入口（如 `/Account/Login`）进行保护。
-
-#### 为何需要高权限（LocalSystem / 管理员）
-
-由于本项目涉及对本机系统的深度控制，为实现以下能力，需要较高权限：
-
-- 在 Session 0 或后台服务环境中启动、管理桌面代理进程（例如使用计划任务在用户登录时以高权限运行桌面代理）。
-- 在系统层面执行某些需要管理员权限的操作（如部分远程控制命令、访问受保护的系统资源等）。
-- 在多会话/远程桌面环境中正确切换或访问当前交互式会话。
-
-因此在 **IIS 部署场景** 下，通常需要：
-
-- 使用 LocalSystem 或具备等效权限的服务账号运行应用程序池，以便能够在 Session 0 中正确检测环境、创建计划任务并启动高权限桌面代理。
-- 结合配置项 `RemoteControl:ElevatedAgent`，将真正执行桌面操作的代理进程以指定管理员账户运行，从而在保证功能的同时，将权限集中到少数受控账户中管理。
-
-在 **自宿主运行场景** 下，如果你只在当前登录用户会话中使用部分功能，可以用普通用户运行；若需要完整远程控制能力（尤其是跨会话、跨桌面操作），建议以管理员身份（或通过“以管理员身份运行”/计划任务方式）启动自宿主进程。
+</div>
 
 ---
 
-### 一、运行前准备
+## ✨ 功能特性
 
-- **安装环境**
-  - 安装 [.NET 8 Runtime / SDK](https://dotnet.microsoft.com/)（推荐安装 SDK，便于本机调试）。
-  - Windows 10/11 或 Windows Server，具备管理员权限。
-- **获取源码**
-  - 从本地 `e:\GIT\chuckieTool` 打开，或使用你自己的 Git 仓库管理（如需要）。
+- 🖥️ **系统控制** - 实时监控 CPU、内存、磁盘、显卡等硬件信息，支持锁定、睡眠、休眠、关机操作
+- 📊 **进程管理** - 查看和管理系统进程，支持按类型筛选和终止进程
+- 🎮 **远程控制** - 实时远程桌面控制，支持 H.264 编码，可调节分辨率和画质
+- 💻 **命令终端** - WebSocket 远程终端，支持 PowerShell/CMD，使用 xterm.js 终端模拟
+- 🐳 **容器管理** - Docker 容器的启动、停止、删除和日志查看
+- 📝 **Compose 编辑** - Docker Compose 文件的在线编辑、验证和一键部署
+- 📁 **文件管理** - 远程文件浏览、上传、下载和删除
+- ⏰ **任务调度** - 基于 Hangfire 的定时任务管理（qBittorrent、DDNS 更新等）
+- 🔐 **安全认证** - JWT 认证保护所有敏感操作
 
-- **配置应用设置（含网站登录账号）**
-  - 复制 `WebApplication1\appsettings.example.json` 为 `WebApplication1\appsettings.json`。
-  - 在 `Auth` 节点中配置网站登录用的用户名、密码和 JWT 密钥，例如：
+---
+
+## 📸 界面预览
+
+### 系统控制
+
+实时监控系统硬件信息，一键执行电源操作。
+
+![系统控制界面](screenshots/QQ20260209-151205.png)
+
+### 进程管理
+
+查看所有运行中的进程，支持筛选和终止操作。
+
+![进程管理界面](screenshots/QQ20260209-151239.png)
+
+### 远程控制
+
+实时远程桌面，支持 H.264 视频流，低延迟高画质。
+
+![远程控制界面](screenshots/QQ20260209-151344.png)
+
+### 命令终端
+
+WebSocket 远程终端，支持 PowerShell 和 CMD。
+
+![命令终端界面](screenshots/QQ20260209-151405.png)
+
+### 容器管理
+
+管理 Docker 容器的完整生命周期。
+
+![容器管理界面](screenshots/QQ20260209-151413.png)
+
+### Docker Compose
+
+在线编辑和部署 Docker Compose 项目。
+
+![Compose 编辑器](screenshots/QQ20260209-151449.png)
+
+### 文件管理
+
+远程浏览和管理服务器文件。
+
+![文件管理界面](screenshots/QQ20260209-151459.png)
+
+---
+
+## 🚀 快速开始
+
+### 环境要求
+
+- Windows 10/11 或 Windows Server
+- [.NET 8 SDK/Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+- （可选）IIS + ASP.NET Core Hosting Bundle
+
+### 安装步骤
+
+1. **克隆仓库**
+
+```bash
+git clone https://github.com/bighamx/chuckieTool.git
+cd chuckieTool
+```
+
+2. **配置应用**
+
+```bash
+# 复制示例配置文件
+copy WebApplication1\appsettings.example.json WebApplication1\appsettings.json
+```
+
+编辑 `appsettings.json`，配置必要的参数：
 
 ```json
 {
   "Auth": {
-    "Username": "你的登录用户名",
-    "Password": "一个足够复杂的登录密码",
-    "JwtSecret": "YOUR_JWT_SECRET_HERE_MUST_BE_LONG_ENOUGH"
-  },
+    "Username": "你的用户名",
+    "Password": "你的密码",
+    "JwtSecret": "至少32位的随机密钥"
+  }
+}
+```
+
+3. **运行应用**
+
+```bash
+cd WebApplication1
+dotnet run
+```
+
+4. **访问服务**
+
+- 主页：`http://localhost:5104/`
+- Hangfire 面板：`http://localhost:5104/hangfire`
+
+---
+
+## ⚙️ 配置说明
+
+### 基础配置
+
+| 配置项 | 说明 | 示例 |
+|--------|------|------|
+| `Auth:Username` | 登录用户名 | `admin` |
+| `Auth:Password` | 登录密码（必填） | `YourSecurePassword` |
+| `Auth:JwtSecret` | JWT 签名密钥（必填，≥32位） | `YourSecretKey...` |
+
+### 可选配置
+
+<details>
+<summary><b>qBittorrent 设置</b></summary>
+
+```json
+{
   "QbSettings": {
-    "DefaultDockerUrl": "http://username:password@hostname:port",
-    "DefaultHomeUrl": "http://username:password@hostname:port"
-  },
+    "DefaultDockerUrl": "http://user:pass@host:port",
+    "DefaultHomeUrl": "http://user:pass@host:port"
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><b>Cloudflare DDNS 设置</b></summary>
+
+```json
+{
   "CloudflareSettings": {
-    "ApiToken": "YOUR_CLOUDFLARE_API_TOKEN",
-    "ZoneId": "YOUR_ZONE_ID_HERE",
+    "ApiToken": "YOUR_API_TOKEN",
+    "ZoneId": "YOUR_ZONE_ID",
     "RecordName": "your.domain.com",
     "Proxied": false,
     "Ttl": 1800
@@ -67,169 +163,119 @@
 }
 ```
 
-  - **登录方式说明**：
-    - Web 登录页面（如 `/Account/Login`）和 Hangfire 面板访问，会使用 `Auth:Username` / `Auth:Password` 进行登录验证。
-    - 登录成功后，服务端会根据 `Auth:JwtSecret` 生成 JWT，用于后续访问受保护接口和 WebSocket（如 `/ws/input`）。
-    - 如果你更改了 `Username` 或 `Password`，需要使用新的账号密码重新登录。
+</details>
 
-- **可选：配置远程控制提权代理**
-  - 在 `WebApplication1\appsettings.json` 中增加：
+<details>
+<summary><b>远程控制提权代理</b></summary>
+
+用于在 IIS/Session 0 环境下执行需要桌面交互的操作：
 
 ```json
-"RemoteControl": {
-  "ElevatedAgent": {
-    "UserName": "本机管理员用户名",
-    "Password": "管理员密码（或使用环境变量 REMOTECONTROL_ELEVATEDAGENT_PASSWORD）",
-    "Domain": "可选，域/工作组"
+{
+  "RemoteControl": {
+    "ElevatedAgent": {
+      "UserName": "管理员用户名",
+      "Password": "管理员密码",
+      "Domain": "可选，域名"
+    }
   }
 }
 ```
 
-> 注意：`appsettings.json` 中通常包含敏感信息（密码、Token），**不要提交到公共 Git 仓库**。可仅提交 `appsettings.example.json`。
+或使用环境变量：`REMOTECONTROL_ELEVATEDAGENT_PASSWORD`
+
+</details>
 
 ---
 
-### 二、自宿主方式运行（Kestrel）
+## 🖥️ 部署方式
 
-此方式适合本机开发调试或简单部署，直接使用 `dotnet run` 或编译后的 `exe` 运行。
-
-#### 1. 使用 `dotnet run` 运行
-
-在命令行中进入 `WebApplication1` 目录：
+### 方式一：自宿主运行（开发/测试）
 
 ```bash
-cd WebApplication1
-dotnet run --project ChuckieHelper.WebApi.csproj
-```
+# 开发模式
+dotnet run --project WebApplication1/ChuckieHelper.WebApi.csproj
 
-- 默认会使用 `launchSettings.json` 中的配置，例如 `http://localhost:5104`。
-- 浏览器访问：
-  - `http://localhost:5104/` 主页
-  - `http://localhost:5104/hangfire` Hangfire 面板（需登录）
-
-#### 2. 使用发布后的可执行文件运行
-
-在解决方案根目录执行：
-
-```bash
-dotnet publish WebApplication1/ChuckieHelper.WebApi.csproj -c Release -o publish
-```
-
-发布完成后，在 `publish` 目录下运行：
-
-```bash
+# 发布后运行
+dotnet publish -c Release -o publish
 cd publish
 ChuckieHelper.WebApi.exe
 ```
 
-如需修改监听地址/端口，可在启动前设置环境变量或使用命令行参数，例如：
+### 方式二：IIS 部署（生产环境）
+
+1. 安装 [ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0)
+
+2. 发布应用
 
 ```bash
-set ASPNETCORE_URLS=http://0.0.0.0:5104
-ChuckieHelper.WebApi.exe
+dotnet publish -c Release -o C:\inetpub\ChuckieHelper
 ```
 
-或在 `appsettings.json` / `appsettings.Production.json` 中添加 `Kestrel` 相关配置（根据需要自行扩展）。
+3. 在 IIS 中创建网站，指向发布目录
+
+4. 配置应用程序池：
+   - .NET CLR 版本：`无托管代码`
+   - 如需远程控制功能，设置标识为 `LocalSystem`
+
+> ⚠️ **安全提示**：`appsettings.json` 包含敏感信息，请勿提交到公开仓库！
 
 ---
 
-### 三、IIS 承载运行（含 LocalSystem 配置）
+## 🔧 桌面代理
 
-此方式适合在服务器上长期运行，并通过 IIS 管理站点、SSL 证书等。
+在 IIS/Session 0 环境下，远程控制功能需要桌面代理的支持：
 
-#### 1. 安装 IIS 和 ASP.NET Core Hosting Bundle
+- 当应用检测到运行在 Session 0 时，会根据 `RemoteControl:ElevatedAgent` 配置自动创建计划任务
+- 计划任务在用户登录时启动桌面代理进程
+- 代理通过命名管道与 WebApi 通信，执行键鼠输入等桌面操作
 
-- 在 Windows「启用或关闭 Windows 功能」中勾选：
-  - **Web 服务器 (IIS)**
-  - **IIS 管理控制台**
-  - 静态内容、默认文档等基础组件。
-- 从微软官网下载并安装 **ASP.NET Core Runtime Hosting Bundle（.NET 8 对应版本）**。
-
-#### 2. 发布 Web 应用
-
-在仓库根目录执行：
-
-```bash
-dotnet publish WebApplication1/ChuckieHelper.WebApi.csproj -c Release -o C:\inetpub\ChuckieHelper.WebApi
-```
-
-（你也可以选择其他路径，但需与后续 IIS 物理路径一致）
-
-#### 3. 在 IIS 中创建网站
-
-1. 打开「IIS 管理器」。
-2. 右键「网站」→「添加网站」：
-   - **站点名称**：`ChuckieHelper.WebApi`
-   - **物理路径**：`C:\inetpub\ChuckieHelper.WebApi`（或你发布的目录）
-   - **绑定**：选择端口（如 `5104` 或 `80`），主机名根据需要填写。
-3. 确认应用程序池：
-   - 建议新建一个专用应用程序池，例如 `ChuckieHelperPool`。
-   - .NET CLR 版本选择 `无托管代码`（ASP.NET Core 由 Hosting Bundle 托管）。
-
-#### 4. 将应用程序池配置为 LocalSystem 账号运行
-
-> 仅在你确实需要使用 LocalSystem 权限（例如访问 Session 0、开启桌面代理等高权限功能）时使用此方式。否则更推荐使用受限服务账号。
-
-1. 在 IIS 管理器中打开「应用程序池」。
-2. 找到 `ChuckieHelperPool` → 右键「高级设置」。
-3. 在「进程模型」→「标识」：
-   - 点击右侧按钮，选择「内置帐户」。
-   - 选择 **LocalSystem**（本地系统）。
-4. 保存后重启应用程序池和站点。
-
-此时站点将以 LocalSystem 身份运行，当检测到运行在 Session 0 时，应用会尝试根据配置创建高权限的桌面代理计划任务（参见 `RemoteControl:ElevatedAgent` 设置）。
-
-#### 5. 测试访问
-
-- 在浏览器访问你配置的地址，例如：
-  - `http://your-server:5104/`
-  - `http://your-server/hangfire`
-- 使用在 `appsettings.json` 中配置的账号密码登录。
-
----
-
-### 四、桌面代理（配合 IIS 的辅助进程）
-
-桌面代理并不是一个单独的运行模式供用户选择，而是 **在 IIS/服务场景下，为了解决 Session 0 无桌面的问题而设计的辅助进程**：
-
-- 当站点在 IIS（通常为 LocalSystem）中运行且检测到自己处于 Session 0 时，会根据 `RemoteControl:ElevatedAgent` 配置自动创建计划任务。
-- 该计划任务在真实的交互式桌面会话中，以指定管理员账号启动一个 **桌面代理进程**。
-- 桌面代理进程负责实际执行需要交互式桌面的高权限操作（如键鼠输入、前台窗口操作等），WebApi 则通过命名管道与其通信。
-
-程序内部支持通过命令行参数 `--desktop-agent` 启动桌面代理进程，本质上是给 **计划任务或高级用户手工调试** 使用：
-
-- 此进程启动时：
-  - **不再启动 Web 服务器**，只运行命名管道服务器处理桌面操作。
-  - 通常由系统自动（计划任务）在用户登录时启动，而不是手工随便运行。
-
-手工调试示例（在发布目录中）：
+手工调试：
 
 ```bash
 ChuckieHelper.WebApi.exe --desktop-agent
 ```
 
-在正式环境中更推荐：
+---
 
-- 通过 IIS 以 LocalSystem 运行 WebApi。
-- 在 `appsettings.json` 中配置 `RemoteControl:ElevatedAgent` 的账号和密码。
-- 由应用在 Session 0 场景下自动创建/维护计划任务，以指定管理员身份、勾选「使用最高权限运行」的方式启动桌面代理进程。
+## ❓ 常见问题
+
+<details>
+<summary><b>Q: 访问出现 500/502 错误？</b></summary>
+
+- 检查 `appsettings.json` 是否存在且格式正确
+- 确认已安装 .NET 8 Hosting Bundle
+- 查看 Windows 事件查看器中的错误日志
+
+</details>
+
+<details>
+<summary><b>Q: Hangfire 面板无法访问？</b></summary>
+
+- 确认已使用正确的账号密码登录
+- 检查浏览器是否阻止了 Cookie
+
+</details>
+
+<details>
+<summary><b>Q: 远程控制功能无法使用？</b></summary>
+
+- 确认应用以管理员权限运行
+- 在 IIS 部署时，检查应用池是否配置为 `LocalSystem`
+- 验证 `RemoteControl:ElevatedAgent` 配置是否正确
+
+</details>
 
 ---
 
-### 五、常见问题（FAQ）
+## 📝 开源协议
 
-- **Q：发布后访问 500/502？**
-  - 检查 `appsettings.json` 是否存在且格式正确。
-  - 确认 .NET 8 Hosting Bundle 是否安装成功。
-  - 查看 Windows 事件查看器或 `logs` 目录中日志（如有）。
+本项目采用 [MIT 协议](LICENSE) 开源。
 
-- **Q：Hangfire 打不开或提示未授权？**
-  - 确认已用正确账号密码登录。
-  - 确认浏览器未拦截 Cookie / JWT。
+---
 
-- **Q：远程控制相关功能无法使用？**
-  - 确认应用池账号或运行账号权限是否足够（如是否为 LocalSystem 或具有相应桌面访问权限）。
-  - 检查 `RemoteControl:ElevatedAgent` 配置是否正确，以及计划任务是否创建成功。
+## 🙏 致谢
 
-如需进一步定制部署脚本或自动化（CI/CD、Docker 等），可以在此 README 的基础上新增章节。
-
+- [ASP.NET Core](https://github.com/dotnet/aspnetcore)
+- [Hangfire](https://github.com/HangfireIO/Hangfire)
+- [xterm.js](https://github.com/xtermjs/xterm.js)
