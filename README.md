@@ -17,7 +17,7 @@
 - 🖥️ **系统控制** - 实时监控 CPU、内存、磁盘、显卡等硬件信息，支持锁定、睡眠、休眠、关机操作
 - 📊 **进程管理** - 查看和管理系统进程，支持按类型筛选和终止进程
 - 🎮 **远程控制** - 实时远程桌面控制，支持 H.264 编码，可调节分辨率和画质
-- 💻 **命令终端** - WebSocket 远程终端，支持 PowerShell/CMD，使用 xterm.js 终端模拟
+- 💻 **命令终端** - WebSocket 远程终端，支持 PowerShell/CMD
 - 🐳 **容器管理** - Docker 容器的启动、停止、删除和日志查看
 - 📝 **Compose 编辑** - Docker Compose 文件的在线编辑、验证和一键部署
 - 📁 **文件管理** - 远程文件浏览、上传、下载和删除
@@ -335,4 +335,3 @@ ChuckieHelper.WebApi.exe --desktop-agent
 
 - [ASP.NET Core](https://github.com/dotnet/aspnetcore)
 - [Hangfire](https://github.com/HangfireIO/Hangfire)
-- [xterm.js](https://github.com/xtermjs/xterm.js)
