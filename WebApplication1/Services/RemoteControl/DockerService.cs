@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace ChuckieHelper.WebApi.Services.RemoteControl;
@@ -563,16 +564,19 @@ public class DockerService
             // 获取目录路径
             var directory = Path.GetDirectoryName(path);
 
-            // 验证驱动器存在性（Windows）
             if (!string.IsNullOrEmpty(directory))
             {
-                var drive = Path.GetPathRoot(directory);
-                if (drive != null && drive.Length >= 2 && drive[0] >= 'A' && drive[0] <= 'Z')
+                // Windows：验证驱动器存在且可访问
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    var driveInfo = new System.IO.DriveInfo(drive);
-                    if (!driveInfo.IsReady)
+                    var drive = Path.GetPathRoot(directory);
+                    if (drive != null && drive.Length >= 2 && drive[0] >= 'A' && drive[0] <= 'Z')
                     {
-                        throw new DirectoryNotFoundException($"Drive {drive} is not accessible or does not exist");
+                        var driveInfo = new System.IO.DriveInfo(drive);
+                        if (!driveInfo.IsReady)
+                        {
+                            throw new DirectoryNotFoundException($"Drive {drive} is not accessible or does not exist");
+                        }
                     }
                 }
 
@@ -939,14 +943,15 @@ public class DockerService
     }
 
     /// <summary>
-    /// 执行 docker-compose 命令
+    /// 执行 docker-compose 命令。Linux 优先使用 "docker compose"（插件），否则 "docker-compose"。
     /// </summary>
     private async Task<string> ExecuteDockerComposeCommandAsync(string arguments, string workingDirectory = "")
     {
+        var (fileName, args) = GetDockerComposeCommand(arguments);
         var processInfo = new ProcessStartInfo
         {
-            FileName = "docker-compose",
-            Arguments = arguments,
+            FileName = fileName,
+            Arguments = args,
             CreateNoWindow = true,
             UseShellExecute = false,
             RedirectStandardOutput = true,
@@ -961,6 +966,15 @@ public class DockerService
         return await ExecuteProcessAsync(processInfo);
     }
 
+    private static (string fileName, string arguments) GetDockerComposeCommand(string arguments)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return ("docker", $"compose {arguments}");
+        }
+        return ("docker-compose", arguments);
+    }
+
     /// <summary>
     /// 流式执行 docker-compose 命令，每行输出通过 onLine 回调；返回进程退出码。
     /// </summary>
@@ -970,10 +984,11 @@ public class DockerService
         Func<string, CancellationToken, Task> onLine,
         CancellationToken cancellationToken = default)
     {
+        var (fileName, args) = GetDockerComposeCommand(arguments);
         var processInfo = new ProcessStartInfo
         {
-            FileName = "docker-compose",
-            Arguments = arguments,
+            FileName = fileName,
+            Arguments = args,
             CreateNoWindow = true,
             UseShellExecute = false,
             RedirectStandardOutput = true,

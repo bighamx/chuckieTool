@@ -216,9 +216,14 @@ namespace WebApplication1
                     return;
                 }
 
-                // 从查询参数获取终端类型
+                // 从查询参数获取终端类型；Linux 仅支持 shell，Windows 支持 shell/cmd/powershell
                 var typeParam = context.Request.Query["type"].ToString().ToLower();
-                var terminalType = typeParam == "cmd" ? TerminalType.Cmd : TerminalType.PowerShell;
+                var terminalType = typeParam switch
+                {
+                    "cmd" => TerminalType.Cmd,
+                    "powershell" => TerminalType.PowerShell,
+                    _ => TerminalType.Shell
+                };
 
                 var terminalService = context.RequestServices.GetRequiredService<TerminalService>();
                 var webSocket = await context.WebSockets.AcceptWebSocketAsync();

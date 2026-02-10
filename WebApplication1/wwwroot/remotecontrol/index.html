@@ -71,7 +71,11 @@
                                 <span>自动刷新</span>
                             </label>
                             <button id="refresh-info-btn" class="btn btn-secondary btn-sm btn-refresh" title="刷新"><span
-                                    class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span></button>
+                                    class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                                        aria-hidden="true">
+                                        <path
+                                            d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                                    </svg></span></button>
                         </div>
                     </div>
 
@@ -157,7 +161,11 @@
                             <option value="background">后台进程</option>
                         </select>
                         <button id="refresh-processes-btn" class="btn btn-secondary btn-refresh" title="刷新"><span
-                                class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span></button>
+                                class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                                    aria-hidden="true">
+                                    <path
+                                        d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                                </svg></span></button>
                     </div>
                 </div>
                 <div class="processes-table-container">
@@ -240,7 +248,8 @@
                     </div>
                 </div>
                 <div class="terminal-status">
-                    <select id="terminal-type" class="terminal-select">
+                    <select id="terminal-type" class="terminal-select" style="display: none;">
+                        <option value="shell">Shell</option>
                         <option value="powershell">PowerShell</option>
                         <option value="cmd">CMD</option>
                     </select>
@@ -260,7 +269,11 @@
                             <div class="docker-controls">
                                 <input type="text" id="container-search" class="search-input" placeholder="搜索容器...">
                                 <button id="refresh-containers-btn" class="btn btn-secondary btn-refresh"
-                                    title="刷新容器列表"><span class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span></button>
+                                    title="刷新容器列表"><span class="refresh-icon"><svg viewBox="0 0 24 24"
+                                            xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                            <path
+                                                d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                                        </svg></span></button>
                             </div>
                         </div>
                         <div class="containers-table-container">
@@ -288,7 +301,11 @@
                         <div class="docker-info-header">
                             <h3>容器统计</h3>
                             <button id="refresh-docker-info-btn" class="btn btn-secondary btn-refresh"
-                                title="刷新信息"><span class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span></button>
+                                title="刷新信息"><span class="refresh-icon"><svg viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                        <path
+                                            d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                                    </svg></span></button>
                         </div>
                         <div id="docker-info" class="docker-info-grid">
                             <div class="info-item">
@@ -324,7 +341,11 @@
                                     placeholder="输入镜像标签 (e.g., nginx:latest)">
                                 <button id="pull-image-btn" class="btn btn-primary">拉取镜像</button>
                                 <button id="refresh-images-btn" class="btn btn-secondary btn-refresh"
-                                    title="刷新镜像列表"><span class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span></button>
+                                    title="刷新镜像列表"><span class="refresh-icon"><svg viewBox="0 0 24 24"
+                                            xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                            <path
+                                                d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                                        </svg></span></button>
                             </div>
                         </div>
                         <div class="images-table-container">
@@ -389,7 +410,11 @@
                             <h2>🔍 运行状态</h2>
                             <div class="compose-status-controls">
                                 <button id="refresh-compose-status-btn" class="btn btn-secondary btn-refresh"
-                                    title="刷新状态"><span class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span></button>
+                                    title="刷新状态"><span class="refresh-icon"><svg viewBox="0 0 24 24"
+                                            xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                            <path
+                                                d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                                        </svg></span></button>
                                 <button id="show-compose-logs-btn" class="btn btn-secondary">📋 查看日志</button>
                             </div>
                         </div>
@@ -421,7 +446,11 @@
                         <button type="button" id="picker-home-btn" class="btn btn-secondary btn-sm">🏠 根</button>
                         <button type="button" id="picker-back-btn" class="btn btn-secondary btn-sm">⬅️ 上级</button>
                         <button type="button" id="picker-refresh-btn" class="btn btn-secondary btn-sm btn-refresh"
-                            title="刷新"><span class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span></button>
+                            title="刷新"><span class="refresh-icon"><svg viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <path
+                                        d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                                </svg></span></button>
                     </div>
                     <div class="picker-list-container">
                         <table class="picker-files-table">
@@ -462,13 +491,21 @@
                             <input type="text" id="breadcrumb-input" class="breadcrumb-input" style="display:none;"
                                 placeholder="输入路径后回车跳转...">
                             <button type="button" id="breadcrumb-refresh-btn" class="breadcrumb-refresh-btn btn-refresh"
-                                title="刷新当前目录"><span class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span></button>
+                                title="刷新当前目录"><span class="refresh-icon"><svg viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                        <path
+                                            d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                                    </svg></span></button>
                         </div>
                         <div class="files-controls">
                             <button id="home-btn" class="btn-icon" title="主目录">🏠</button>
                             <button id="back-btn" class="btn-icon" title="返回上级">⬅️</button>
                             <button id="refresh-files-btn" class="btn-icon btn-refresh" title="刷新"><span
-                                    class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span></button>
+                                    class="refresh-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                                        aria-hidden="true">
+                                        <path
+                                            d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                                    </svg></span></button>
                             <div class="create-dropdown-wrapper">
                                 <button type="button" id="create-folder-btn" class="btn-icon"
                                     title="新建文件、文件夹">➕</button>

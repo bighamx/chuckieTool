@@ -12,8 +12,10 @@ public class FileService
 
     public FileService()
     {
-        // 设置可访问的根目录，默认为用户主目录
-        _rootPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            _rootPath = "/";
+        else
+            _rootPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
     }
 
     /// <summary>
@@ -93,10 +95,13 @@ public class FileService
     }
 
     /// <summary>
-    /// 获取所有驱动器列表
+    /// 获取所有驱动器/挂载点列表。Windows 为盘符，Linux 为 /proc/mounts 中的挂载点。
     /// </summary>
     private List<FileInfo> GetDrives()
     {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            return GetLinuxMounts();
+
         var drives = new List<FileInfo>();
         try
         {
@@ -104,7 +109,6 @@ public class FileService
             {
                 try
                 {
-                    // 检查驱动器是否就绪
                     if (drive.IsReady)
                     {
                         drives.Add(new FileInfo
@@ -122,7 +126,6 @@ public class FileService
                     }
                     else
                     {
-                        // 未就绪的驱动器也显示，但标记名称
                         drives.Add(new FileInfo
                         {
                             Name = $"{drive.Name} (未就绪)",
@@ -135,10 +138,7 @@ public class FileService
                         });
                     }
                 }
-                catch
-                {
-                    // 跳过无法访问的驱动器
-                }
+                catch { }
             }
         }
         catch (Exception ex)
@@ -146,6 +146,85 @@ public class FileService
             Console.WriteLine($"GetDrives error: {ex.Message}");
         }
         return drives;
+    }
+
+    /// <summary>
+    /// Linux：从 /proc/mounts 获取挂载点列表，作为“根”级文件列表的入口。
+    /// </summary>
+    private static List<FileInfo> GetLinuxMounts()
+    {
+        var list = new List<FileInfo>();
+        try
+        {
+            if (!System.IO.File.Exists("/proc/mounts"))
+                return list;
+            var lines = System.IO.File.ReadAllLines("/proc/mounts");
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var line in lines)
+            {
+                var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 4) continue;
+                var mountPoint = parts[1];
+                if (mountPoint.StartsWith("/sys", StringComparison.Ordinal) || mountPoint.StartsWith("/proc", StringComparison.Ordinal) || mountPoint.StartsWith("/dev", StringComparison.Ordinal))
+                    continue;
+                if (seen.Contains(mountPoint)) continue;
+                seen.Add(mountPoint);
+                long total = 0, free = 0;
+                try
+                {
+                    (total, free) = GetLinuxMountSpace(mountPoint);
+                }
+                catch { }
+                list.Add(new FileInfo
+                {
+                    Name = string.IsNullOrEmpty(mountPoint) || mountPoint == "/" ? "/" : mountPoint,
+                    Path = mountPoint,
+                    IsDirectory = true,
+                    Size = 0,
+                    Modified = DateTime.Now,
+                    CanRead = true,
+                    CanWrite = true,
+                    TotalBytes = total > 0 ? total : null,
+                    FreeBytes = free > 0 ? free : null
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetLinuxMounts error: {ex.Message}");
+        }
+        return list;
+    }
+
+    private static (long totalBytes, long freeBytes) GetLinuxMountSpace(string path)
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "df",
+                Arguments = $"-B1 --output=size,avail \"{path}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            using var proc = System.Diagnostics.Process.Start(psi);
+            if (proc != null)
+            {
+                var output = proc.StandardOutput.ReadToEnd().Trim();
+                proc.WaitForExit(2000);
+                var lines = output.Split('\n');
+                if (lines.Length >= 2)
+                {
+                    var parts = lines[1].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2 && long.TryParse(parts[0], out var total) && long.TryParse(parts[1], out var free))
+                        return (total, free);
+                }
+            }
+        }
+        catch { }
+        return (0, 0);
     }
 
     /// <summary>

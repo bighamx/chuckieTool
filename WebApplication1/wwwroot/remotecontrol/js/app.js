@@ -21,6 +21,7 @@ class RemoteControl {
         this.containers = [];
         this.containerStats = [];
         this.currentPath = null;
+        this.platform = null;
         /** 当前目录文件列表（用于排序与重绘） */
         this.files = [];
         /** 文件列表排序：'name' | 'type' | 'size' | 'date' | null */
@@ -1927,7 +1928,7 @@ class RemoteControl {
             this.disconnectTerminal();
         }
 
-        const terminalType = document.getElementById('terminal-type').value;
+        const terminalType = (document.getElementById('terminal-type')?.value) || 'shell';
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws/terminal?access_token=${this.token}&type=${terminalType}`;
 
@@ -2154,6 +2155,30 @@ class RemoteControl {
             `).join('');
         } else {
             netListEl.innerHTML = '<span class="text-muted">未检测到网络适配器</span>';
+        }
+
+        // 保存平台信息供其他方法使用
+        this.platform = info.platform;
+
+        // Linux 平台隐藏远程桌面视频流标签页（该功能已禁用）
+        const screenshotTabBtn = document.querySelector('.tab[data-tab="screenshot"]');
+        if (screenshotTabBtn) {
+            screenshotTabBtn.style.display = info.platform === 'Linux' ? 'none' : '';
+        }
+
+        // 根据平台动态设置终端类型选择框
+        const terminalSelect = document.getElementById('terminal-type');
+        if (terminalSelect) {
+            const isLinux = info.platform === 'Linux';
+            Array.from(terminalSelect.options).forEach(opt => {
+                if (isLinux) {
+                    opt.style.display = opt.value === 'shell' ? '' : 'none';
+                } else {
+                    opt.style.display = opt.value === 'shell' ? 'none' : '';
+                }
+            });
+            terminalSelect.value = isLinux ? 'shell' : 'powershell';
+            terminalSelect.style.display = '';
         }
     }
 
@@ -3493,6 +3518,10 @@ volumes:
     // ============ File Management Methods ============
 
     async loadFiles(path = null) {
+        // 防御性修复: 确保 Linux 路径不丢失前导 /
+        if (path && this.platform === 'Linux' && !path.startsWith('/')) {
+            path = '/' + path;
+        }
         this.setRefreshState(['refresh-files-btn', 'breadcrumb-refresh-btn'], true);
         try {
             const url = path ? `/api/files/list?path=${encodeURIComponent(path)}` : '/api/files/list';
@@ -3533,31 +3562,30 @@ volumes:
         container.appendChild(homeBtn);
 
         if (path && path !== '' && path !== '/') {
-            // Windows 路径处理（如 C:\folder1\folder2 或 C:/folder1/folder2）
             let normalizedPath = path.replace(/\\/g, '/');
+            const isLinuxPath = normalizedPath.startsWith('/');
             const parts = normalizedPath.split('/').filter(p => p !== '');
 
             parts.forEach((part, index) => {
                 const separator = document.createElement('span');
                 separator.className = 'breadcrumb-separator';
-                separator.textContent = '\\';
+                separator.textContent = isLinuxPath ? '/' : '\\';
                 container.appendChild(separator);
 
                 const item = document.createElement('button');
                 item.className = 'breadcrumb-item';
-
-                // 对于驱动器根目录（如 C:），添加反斜杠以形成完整路径
-                if (index === 0 && part.match(/^[A-Za-z]:$/)) {
+                if (isLinuxPath) {
                     item.textContent = part;
-                    const drivePath = part + '\\';
-                    item.onclick = () => this.navigateToBreadcrumb(drivePath);
+                    const currentPath = '/' + parts.slice(0, index + 1).join('/');
+                    item.onclick = () => this.navigateToBreadcrumb(currentPath);
+                } else if (index === 0 && part.match(/^[A-Za-z]:$/)) {
+                    item.textContent = part;
+                    item.onclick = () => this.navigateToBreadcrumb(part + '\\');
                 } else {
                     item.textContent = part;
-                    // 重建完整路径
                     const currentPath = parts.slice(0, index + 1).join('/');
                     item.onclick = () => this.navigateToBreadcrumb(currentPath);
                 }
-
                 container.appendChild(item);
             });
         }
@@ -3592,31 +3620,32 @@ volumes:
 
     navigateBack() {
         if (this.currentPath) {
-            // 处理 Windows 路径
             const normalizedPath = this.currentPath.replace(/\\/g, '/');
+            const isLinuxPath = normalizedPath.startsWith('/');
 
-            // 检查是否在驱动器根目录（如 C:\ 或 C:/）
-            if (normalizedPath.match(/^[A-Za-z]:\/$/)) {
-                // 返回到驱动器列表
-                this.loadFiles(null);
+            if (isLinuxPath) {
+                if (normalizedPath === '/') {
+                    this.loadFiles(null);
+                    return;
+                }
+                const lastSlash = normalizedPath.lastIndexOf('/');
+                const parentPath = lastSlash === 0 ? '/' : normalizedPath.substring(0, lastSlash);
+                this.loadFiles(parentPath);
                 return;
             }
 
+            if (normalizedPath.match(/^[A-Za-z]:\/$/)) {
+                this.loadFiles(null);
+                return;
+            }
             const lastSlash = normalizedPath.lastIndexOf('/');
             if (lastSlash > 0) {
                 const parentPath = normalizedPath.substring(0, lastSlash);
-                // 如果父路径是驱动器（如 C:），添加反斜杠
-                if (parentPath.match(/^[A-Za-z]:$/)) {
-                    this.loadFiles(parentPath + '\\');
-                } else {
-                    this.loadFiles(parentPath);
-                }
+                this.loadFiles(parentPath.match(/^[A-Za-z]:$/) ? parentPath + '\\' : parentPath);
             } else {
-                // 返回到驱动器列表
                 this.loadFiles(null);
             }
         }
-        // 如果当前没有路径，不执行任何操作（已经在驱动器列表）
     }
 
     /** 更新文件表头排序箭头 */

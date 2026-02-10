@@ -1,12 +1,15 @@
 using System.Diagnostics;
 using System.Net.WebSockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32;
 
 namespace ChuckieHelper.WebApi.Services.RemoteControl;
 
+/// <summary>终端类型：Linux 仅支持 Shell；Windows 支持 PowerShell/Cmd，Shell 映射为 Cmd。</summary>
 public enum TerminalType
 {
+    Shell,
     PowerShell,
     Cmd
 }
@@ -15,7 +18,7 @@ public class TerminalService
 {
     private readonly Dictionary<string, TerminalSession> _sessions = new();
 
-    public async Task HandleWebSocketAsync(WebSocket webSocket, TerminalType terminalType = TerminalType.PowerShell)
+    public async Task HandleWebSocketAsync(WebSocket webSocket, TerminalType terminalType = TerminalType.Shell)
     {
         var sessionId = Guid.NewGuid().ToString();
         var session = new TerminalSession(webSocket, terminalType);
@@ -50,11 +53,11 @@ public class TerminalSession : IDisposable
     {
         _webSocket = webSocket;
         _terminalType = terminalType;
-        _useUtf8 = IsSystemUtf8Enabled();
+        _useUtf8 = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || IsSystemUtf8Enabled();
     }
 
     /// <summary>
-    /// 检测系统是否启用了 "Beta版: 使用 Unicode UTF-8 提供全球语言支持"
+    /// 检测系统是否启用了 "Beta版: 使用 Unicode UTF-8 提供全球语言支持"（仅 Windows）
     /// </summary>
     private static bool IsSystemUtf8Enabled()
     {
@@ -91,10 +94,13 @@ public class TerminalSession : IDisposable
 
         _process.Start();
 
-        // 统一初始设置
-        if (_terminalType == TerminalType.PowerShell)
+        // 统一初始设置（Shell 不发送编码/清屏命令）
+        if (_terminalType == TerminalType.Shell)
         {
-            // PowerShell: 使用 GBK 编码以匹配中文输出
+            // Linux/Shell：不发送任何初始化命令，保持原生 shell
+        }
+        else if (_terminalType == TerminalType.PowerShell)
+        {
             await _process.StandardInput.WriteLineAsync("[Console]::OutputEncoding = [System.Text.Encoding]::GetEncoding(936)");
             await _process.StandardInput.WriteLineAsync("[Console]::InputEncoding = [System.Text.Encoding]::GetEncoding(936)");
             await _process.StandardInput.WriteLineAsync("$OutputEncoding = [System.Text.Encoding]::GetEncoding(936)");
@@ -102,17 +108,10 @@ public class TerminalSession : IDisposable
         }
         else
         {
-            // CMD 模式：根据系统设置选择代码页
             if (_useUtf8)
-            {
-                // 系统已启用 UTF-8 全局支持，使用 65001
                 await _process.StandardInput.WriteLineAsync("chcp 65001 > nul");
-            }
             else
-            {
-                // 传统中文系统，使用 GBK (936)
                 await _process.StandardInput.WriteLineAsync("chcp 936 > nul");
-            }
             await _process.StandardInput.FlushAsync();
             await Task.Delay(100);
             await _process.StandardInput.WriteLineAsync("cls");
@@ -136,7 +135,19 @@ public class TerminalSession : IDisposable
             WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
         };
 
-        if (_terminalType == TerminalType.PowerShell)
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || _terminalType == TerminalType.Shell)
+        {
+            // Linux 或显式选择 Shell：使用 /bin/bash -i（交互式），UTF-8
+            var utf8 = new UTF8Encoding(false);
+            startInfo.FileName = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "/bin/bash" : "cmd.exe";
+            startInfo.Arguments = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "-i" : "/Q /K";
+            startInfo.StandardInputEncoding = utf8;
+            startInfo.StandardOutputEncoding = utf8;
+            startInfo.StandardErrorEncoding = utf8;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                startInfo.WorkingDirectory = Environment.GetEnvironmentVariable("HOME") ?? "/";
+        }
+        else if (_terminalType == TerminalType.PowerShell)
         {
             var gbkEncoding = Encoding.GetEncoding("GBK");
             startInfo.FileName = "powershell.exe";
@@ -145,14 +156,11 @@ public class TerminalSession : IDisposable
             startInfo.StandardOutputEncoding = gbkEncoding;
             startInfo.StandardErrorEncoding = gbkEncoding;
         }
-        else // CMD
+        else
         {
             startInfo.FileName = "cmd.exe";
-            // 不使用 /Q，保留命令回显
-
             if (_useUtf8)
             {
-                // 系统已启用 UTF-8 全局支持
                 var utf8NoBom = new UTF8Encoding(false);
                 startInfo.StandardInputEncoding = utf8NoBom;
                 startInfo.StandardOutputEncoding = utf8NoBom;
@@ -160,7 +168,6 @@ public class TerminalSession : IDisposable
             }
             else
             {
-                // 传统中文系统，使用 GBK (936) 编码
                 var gbkEncoding = Encoding.GetEncoding("GBK");
                 startInfo.StandardInputEncoding = gbkEncoding;
                 startInfo.StandardOutputEncoding = gbkEncoding;
@@ -217,21 +224,26 @@ public class TerminalSession : IDisposable
                 if (result.MessageType == WebSocketMessageType.Text && _process != null && !_process.HasExited)
                 {
                     var command = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    var lineEnd = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "\n" : "\r\n";
 
-                    if (_terminalType == TerminalType.Cmd && !_useUtf8)
+                    if (_terminalType == TerminalType.Shell || RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                     {
-                        // 传统中文系统 CMD：需要将 UTF-8 字符串转换为 GBK 字节写入
+                        var bytes = _process.StandardInput.Encoding.GetBytes(command + lineEnd);
+                        await _process.StandardInput.BaseStream.WriteAsync(bytes);
+                        await _process.StandardInput.BaseStream.FlushAsync();
+                    }
+                    else if (_terminalType == TerminalType.Cmd && !_useUtf8)
+                    {
                         var gbkEncoding = Encoding.GetEncoding("GBK");
                         var gbkBytes = gbkEncoding.GetBytes(command + "\r\n");
-                        await _process.StandardInput.BaseStream.WriteAsync(gbkBytes, 0, gbkBytes.Length);
+                        await _process.StandardInput.BaseStream.WriteAsync(gbkBytes);
                         await _process.StandardInput.BaseStream.FlushAsync();
                     }
                     else if (_terminalType == TerminalType.PowerShell)
                     {
-                        // PowerShell：按 GBK 写入
                         var gbkEncoding = Encoding.GetEncoding("GBK");
                         var gbkBytes = gbkEncoding.GetBytes(command + "\r\n");
-                        await _process.StandardInput.BaseStream.WriteAsync(gbkBytes, 0, gbkBytes.Length);
+                        await _process.StandardInput.BaseStream.WriteAsync(gbkBytes);
                         await _process.StandardInput.BaseStream.FlushAsync();
                     }
                     else

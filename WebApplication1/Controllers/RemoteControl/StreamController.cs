@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ChuckieHelper.WebApi.Services.RemoteControl;
@@ -21,6 +22,12 @@ public class StreamController : ControllerBase
     [HttpGet("legacy")]
     public async Task LegacyGetStream(CancellationToken cancellationToken)
     {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            Response.StatusCode = 503;
+            await Response.WriteAsync("远程桌面视频流在 Linux 上已禁用", cancellationToken);
+            return;
+        }
         var response = Response;
         response.Headers.Append("Content-Type", $"multipart/x-mixed-replace; boundary={Boundary}");
 
@@ -96,6 +103,12 @@ public class StreamController : ControllerBase
         [FromQuery] string crf = "18",
         CancellationToken cancellationToken = default)
     {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            Response.StatusCode = 503;
+            await Response.WriteAsync("远程桌面视频流在 Linux 上已禁用", cancellationToken);
+            return;
+        }
         Process? process = null;
         Task? stderrTask = null;
 
