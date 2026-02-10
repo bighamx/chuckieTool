@@ -10,9 +10,9 @@ namespace ChuckieHelper.WebApi.Controllers.RemoteControl;
 [Authorize]
 public class DockerController : ControllerBase
 {
-    private readonly DockerService _dockerService;
+    private readonly IDockerService _dockerService;
 
-    public DockerController(DockerService dockerService)
+    public DockerController(IDockerService dockerService)
     {
         _dockerService = dockerService;
     }

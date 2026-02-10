@@ -57,7 +57,15 @@ namespace WebApplication1
             builder.Services.AddSingleton<AuthService>();
             builder.Services.AddSingleton<SystemService>();
             builder.Services.AddSingleton<TerminalService>();
-            builder.Services.AddSingleton<DockerService>();
+            // Docker Service Registration based on OS
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+            {
+                builder.Services.AddSingleton<IDockerService, DockerService>();
+            }
+            else
+            {
+                builder.Services.AddSingleton<IDockerService, LinuxDockerService>();
+            }
             builder.Services.AddSingleton<FileService>();
 
             // Configure JWT Authentication

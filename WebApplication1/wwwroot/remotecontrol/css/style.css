@@ -301,6 +301,45 @@ body {
     white-space: nowrap;
 }
 
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+    vertical-align: middle;
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    height: 20px;
+}
+
+.badge.windows {
+    background-color: rgba(9, 105, 218, 0.15);
+    color: var(--accent-primary);
+    border: 1px solid rgba(9, 105, 218, 0.4);
+}
+
+.badge.linux {
+    background-color: rgba(210, 153, 34, 0.15);
+    color: var(--accent-warning);
+    border: 1px solid rgba(210, 153, 34, 0.4);
+}
+
+[data-theme="dark"] .badge.windows {
+    background-color: rgba(56, 139, 253, 0.15);
+    border-color: rgba(56, 139, 253, 0.4);
+    color: #58a6ff;
+}
+
+[data-theme="dark"] .badge.linux {
+    background-color: rgba(210, 153, 34, 0.15);
+    border-color: rgba(210, 153, 34, 0.4);
+    color: #d29922;
+}
+
 .header-right {
     display: flex;
     align-items: center;

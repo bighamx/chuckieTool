@@ -2054,6 +2054,14 @@ class RemoteControl {
     }
 
     renderSystemInfo(info) {
+        // Platform Badge
+        const osBadge = document.getElementById('header-platform-badge');
+        if (osBadge) {
+            osBadge.textContent = info.platform;
+            osBadge.className = `badge ${info.platform.toLowerCase()}`;
+            osBadge.style.display = 'inline-flex';
+        }
+
         // 基本信息
         document.getElementById('info-machine').textContent = info.machineName;
         document.getElementById('info-user').textContent = info.userName;
