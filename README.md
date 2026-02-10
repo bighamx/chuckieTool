@@ -28,6 +28,9 @@
 
 ## 📸 界面预览
 
+<details>
+<summary><b>点击展开功能截图</b></summary>
+
 ### 系统控制
 
 实时监控系统硬件信息，一键执行电源操作。
@@ -69,6 +72,8 @@ WebSocket 远程终端，支持 PowerShell 和 CMD。
 远程浏览和管理服务器文件。
 
 ![文件管理界面](screenshots/QQ20260209-151459.png)
+
+</details>
 
 ---
 
