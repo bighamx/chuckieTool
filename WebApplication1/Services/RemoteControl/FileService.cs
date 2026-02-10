@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace ChuckieHelper.WebApi.Services.RemoteControl;
@@ -373,6 +374,77 @@ public class FileService
         catch (Exception ex)
         {
             Console.WriteLine($"MoveFile error: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 重命名文件或文件夹
+    /// </summary>
+    public bool Rename(string oldPath, string newPath)
+    {
+        try
+        {
+            var fullOld = ResolvePath(oldPath);
+            var fullNew = ResolvePath(newPath);
+            if (Directory.Exists(fullOld))
+            {
+                Directory.Move(fullOld, fullNew);
+                return true;
+            }
+            if (System.IO.File.Exists(fullOld))
+            {
+                System.IO.File.Move(fullOld, fullNew, true);
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Rename error: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 设置磁盘卷标（仅 Windows 支持，通过 label 命令）
+    /// </summary>
+    public bool SetDriveLabel(string path, string label)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return false;
+        try
+        {
+            var fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (fullPath.Length < 2)
+                return false;
+            var root = fullPath.Length == 2 && fullPath[1] == ':'
+                ? fullPath
+                : Path.GetPathRoot(fullPath);
+            if (string.IsNullOrEmpty(root))
+                return false;
+            var driveLetter = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (driveLetter.Length != 2 || driveLetter[1] != ':')
+                return false;
+            var volumeLabel = (label ?? "").Trim();
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            psi.ArgumentList.Add("/c");
+            psi.ArgumentList.Add("label");
+            psi.ArgumentList.Add(driveLetter);
+            psi.ArgumentList.Add(volumeLabel);
+            using var p = System.Diagnostics.Process.Start(psi);
+            if (p == null) return false;
+            p.WaitForExit(5000);
+            return p.ExitCode == 0;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SetDriveLabel error: {ex.Message}");
             return false;
         }
     }

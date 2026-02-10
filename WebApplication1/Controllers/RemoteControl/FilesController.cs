@@ -333,6 +333,48 @@ public class FilesController : ControllerBase
     }
 
     /// <summary>
+    /// 重命名文件或文件夹
+    /// </summary>
+    [HttpPost("rename")]
+    public IActionResult Rename([FromBody] RenameRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.OldPath) || string.IsNullOrEmpty(request.NewPath))
+                return BadRequest(new { message = "OldPath and NewPath are required" });
+            var result = _fileService.Rename(request.OldPath, request.NewPath);
+            if (result)
+                return Ok(new { message = "重命名成功" });
+            return BadRequest(new { message = "重命名失败" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 设置磁盘卷标（仅 Windows，用于修改磁盘显示名称）
+    /// </summary>
+    [HttpPost("set-drive-label")]
+    public IActionResult SetDriveLabel([FromBody] SetDriveLabelRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.Path))
+                return BadRequest(new { message = "Path is required" });
+            var result = _fileService.SetDriveLabel(request.Path, request.Label ?? "");
+            if (result)
+                return Ok(new { message = "磁盘名称已修改" });
+            return BadRequest(new { message = "修改失败或当前系统不支持" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// 上传文件
     /// </summary>
     [HttpPost("upload")]
@@ -398,4 +440,16 @@ public class MoveFileRequest
 {
     public string SourcePath { get; set; } = "";
     public string DestPath { get; set; } = "";
+}
+
+public class RenameRequest
+{
+    public string OldPath { get; set; } = "";
+    public string NewPath { get; set; } = "";
+}
+
+public class SetDriveLabelRequest
+{
+    public string Path { get; set; } = "";
+    public string? Label { get; set; }
 }

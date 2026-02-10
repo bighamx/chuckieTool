@@ -141,6 +141,8 @@ class RemoteControl {
         const dialogContainer = dialog?.querySelector('.dialog-container');
         const titleEl = document.getElementById('dialog-title');
         const messageEl = document.getElementById('dialog-message');
+        const inputWrap = document.getElementById('dialog-input-wrap');
+        const inputEl = document.getElementById('dialog-input');
         const logsEl = document.getElementById('dialog-logs');
         const okBtn = document.getElementById('dialog-ok-btn');
         const cancelBtn = document.getElementById('dialog-cancel-btn');
@@ -149,6 +151,19 @@ class RemoteControl {
         titleEl.textContent = title;
         messageEl.textContent = message;
         messageEl.style.display = 'block';
+
+        // 输入框：prompt 类型时显示
+        const isPrompt = options.type === 'prompt';
+        if (inputWrap && inputEl) {
+            if (isPrompt) {
+                inputWrap.style.display = 'block';
+                inputEl.value = options.defaultValue ?? '';
+                inputEl.placeholder = options.placeholder ?? '';
+                inputEl.focus();
+            } else {
+                inputWrap.style.display = 'none';
+            }
+        }
 
         // 处理日志显示
         if (options.logs) {
@@ -164,19 +179,37 @@ class RemoteControl {
             }
         }
 
-        // 返回 Promise 以支持 confirm 类型
+        // 返回 Promise 以支持 confirm / prompt 类型
         return new Promise((resolve) => {
-            if (options.type === 'confirm') {
+            if (options.type === 'confirm' || isPrompt) {
                 cancelBtn.style.display = 'inline-flex';
 
+                const onKey = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        okBtn.click();
+                    } else if (e.key === 'Escape') {
+                        cancelBtn.click();
+                    }
+                };
+                if (isPrompt && inputEl) {
+                    inputEl.addEventListener('keydown', onKey);
+                }
+
                 okBtn.onclick = () => {
+                    if (isPrompt && inputEl) inputEl.removeEventListener('keydown', onKey);
                     this.hideDialog();
-                    resolve(true);
+                    if (isPrompt && inputEl) {
+                        resolve(inputEl.value.trim());
+                    } else {
+                        resolve(true);
+                    }
                 };
 
                 cancelBtn.onclick = () => {
+                    if (isPrompt && inputEl) inputEl.removeEventListener('keydown', onKey);
                     this.hideDialog();
-                    resolve(false);
+                    resolve(isPrompt ? null : false);
                 };
             } else {
                 cancelBtn.style.display = 'none';
@@ -3636,11 +3669,13 @@ volumes:
             const isImage = this.isImageFile(file.name);
             const isVideo = this.isVideoFile(file.name);
             const isCompose = !file.isDirectory && this.isDockerComposeFile(file.name);
+            const isDrive = file.isDirectory && file.totalBytes != null && file.totalBytes > 0;
 
             return `
                 <tr class="${rowClass}" 
                     data-path="${this.escapeHtml(file.path)}" 
                     data-is-directory="${file.isDirectory}"
+                    data-is-drive="${isDrive}"
                     data-name="${this.escapeHtml(file.name)}"
                     data-file-size="${file.isDirectory ? '' : (file.size || 0)}"
                     >
@@ -3656,7 +3691,7 @@ volumes:
                                <button class="btn-small btn-download">下载</button>`
                     : ''
                 }
-                        <button class="btn-small danger btn-delete">删除</button>
+                        ${!isDrive ? '<button class="btn-small danger btn-delete">删除</button>' : ''}
                     </td>
                 </tr>
             `;
@@ -3686,9 +3721,10 @@ volumes:
                 e.preventDefault();
                 const path = row.dataset.path;
                 const isDirectory = row.dataset.isDirectory === 'true';
+                const isDrive = row.dataset.isDrive === 'true';
                 const name = row.dataset.name;
                 const fileSize = row.dataset.fileSize ? parseInt(row.dataset.fileSize, 10) : 0;
-                this.showContextMenu(e, path, isDirectory, name, fileSize);
+                this.showContextMenu(e, path, isDirectory, name, fileSize, isDrive);
             });
 
             // 按钮事件 - Compose 管理按钮
@@ -4462,7 +4498,7 @@ volumes:
 
     // ============ Context Menu Methods ============
 
-    showContextMenu(event, path, isDirectory, name, fileSize = 0) {
+    showContextMenu(event, path, isDirectory, name, fileSize = 0, isDrive = false) {
         event.preventDefault();
         event.stopPropagation();
 
@@ -4477,12 +4513,13 @@ volumes:
         // 存储路径信息到 data 属性
         contextMenu.dataset.path = path;
         contextMenu.dataset.isDirectory = isDirectory;
+        contextMenu.dataset.isDrive = isDrive ? 'true' : 'false';
         contextMenu.dataset.name = name;
 
         let menuItems = '';
 
         if (isDirectory) {
-            // 文件夹菜单
+            // 文件夹/磁盘菜单：磁盘不显示删除，重命名用于修改磁盘名称
             menuItems = `
                 <div class="context-menu-item" data-action="open">
                     <span class="menu-icon">📂</span>
@@ -4491,12 +4528,14 @@ volumes:
                 <div class="context-menu-separator"></div>
                 <div class="context-menu-item" data-action="rename">
                     <span class="menu-icon">✏️</span>
-                    <span>重命名</span>
+                    <span>${isDrive ? '修改磁盘名称' : '重命名'}</span>
                 </div>
+                ${!isDrive ? `
                 <div class="context-menu-item danger" data-action="delete">
                     <span class="menu-icon">🗑️</span>
                     <span>删除文件夹</span>
                 </div>
+                ` : ''}
             `;
         } else {
             // 文件菜单
@@ -4543,6 +4582,7 @@ volumes:
                 const action = e.currentTarget.dataset.action;
                 const menuPath = contextMenu.dataset.path;
                 const menuIsDirectory = contextMenu.dataset.isDirectory === 'true';
+                const menuIsDrive = contextMenu.dataset.isDrive === 'true';
                 const menuName = contextMenu.dataset.name;
 
                 switch (action) {
@@ -4562,7 +4602,7 @@ volumes:
                         this.downloadFile(menuPath);
                         break;
                     case 'rename':
-                        this.renameFile(menuPath, menuIsDirectory, menuName);
+                        this.renameFile(menuPath, menuIsDirectory, menuName, menuIsDrive);
                         break;
                     case 'delete':
                         this.deleteFile(menuPath, menuIsDirectory);
@@ -4596,16 +4636,47 @@ volumes:
         }
     }
 
-    async renameFile(oldPath, isDirectory, currentName) {
-        const newName = prompt(`重命名${isDirectory ? '文件夹' : '文件'}:`, currentName);
-        if (!newName || newName === currentName) {
+    async renameFile(oldPath, isDirectory, currentName, isDrive = false) {
+        let defaultName = currentName;
+        if (isDrive && currentName) {
+            // 磁盘显示名为 "C:\ (Local Disk)"，默认只编辑括号内卷标
+            const m = currentName.match(/\s*\(([^)]*)\)\s*$/);
+            if (m) defaultName = m[1].trim();
+        }
+        const dialogTitle = isDrive ? '修改磁盘名称' : (isDirectory ? '重命名文件夹' : '重命名文件');
+        const newName = await this.showDialog('请输入新名称：', dialogTitle, {
+            type: 'prompt',
+            defaultValue: defaultName,
+            placeholder: '新名称'
+        });
+        if (newName == null || newName === '') {
             return;
+        }
+        const newNameTrim = newName;
+        if (newNameTrim === defaultName && !isDrive) {
+            const pathParts = oldPath.replace(/\\/g, '/').split('/');
+            if (pathParts[pathParts.length - 1] === newNameTrim) return;
         }
 
         try {
-            // 构造新路径
+            if (isDrive) {
+                const response = await fetch('/api/files/set-drive-label', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ path: oldPath, label: newNameTrim })
+                });
+                const data = await response.json();
+                this.showDialog(data.message, response.ok ? '成功' : '错误');
+                if (response.ok) this.loadFiles(this.currentPath);
+                return;
+            }
+
+            // 文件/文件夹重命名：构造新路径
             const pathParts = oldPath.replace(/\\/g, '/').split('/');
-            pathParts[pathParts.length - 1] = newName;
+            pathParts[pathParts.length - 1] = newNameTrim;
             const newPath = pathParts.join('/');
 
             const response = await fetch('/api/files/rename', {
@@ -4627,7 +4698,7 @@ volumes:
                 this.loadFiles(this.currentPath);
             }
         } catch (error) {
-            this.showDialog('重命名失败: ' + error.message, '错误');
+            this.showDialog((isDrive ? '修改磁盘名称' : '重命名') + '失败: ' + error.message, '错误');
         }
     }
 }
