@@ -1713,6 +1713,8 @@ class RemoteControl {
 
     handleRemoteMouseMove(e) {
         if (!this.streamActive) return;
+        /** 仅当用户点击过视频画面（焦点在流区域）时才实时发送鼠标移动 */
+        if (!this.isStreamAreaFocused()) return;
 
         const now = Date.now();
         if (now - this.lastMoveTime < this.moveThrottleMs) return;
