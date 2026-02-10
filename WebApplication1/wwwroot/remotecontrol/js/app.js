@@ -3506,6 +3506,7 @@ volumes:
                 this.files = result.data || [];
                 this.renderFilesList();
                 this.updateBreadcrumb(path);
+                this.updateFilesToolbarState();
                 // 更新 hash 以记住文件路径
                 this.updateHash();
             }
@@ -3569,6 +3570,24 @@ volumes:
 
     navigateToBreadcrumb(path) {
         this.loadFiles(path || null);
+    }
+
+    /** 根目录（磁盘列表）时禁用上传、新建；进入文件夹后启用 */
+    updateFilesToolbarState() {
+        const isRoot = this.currentPath === null || this.currentPath === '';
+        const createBtn = document.getElementById('create-folder-btn');
+        const createWrap = document.querySelector('.create-dropdown-wrapper');
+        const uploadLabel = document.querySelector('.file-upload-label');
+        if (createBtn) {
+            createBtn.disabled = isRoot;
+            createBtn.classList.toggle('file-toolbar-disabled', isRoot);
+            if (createWrap) createWrap.classList.toggle('file-toolbar-disabled', isRoot);
+        }
+        if (uploadLabel) {
+            uploadLabel.classList.toggle('file-toolbar-disabled', isRoot);
+            if (isRoot) uploadLabel.removeAttribute('for');
+            else uploadLabel.setAttribute('for', 'file-upload');
+        }
     }
 
     navigateBack() {
@@ -4440,6 +4459,10 @@ volumes:
     }
 
     async uploadFile() {
+        if (!this.currentPath) {
+            this.showToast('根目录不支持上传，请先进入某个磁盘或文件夹', 'info');
+            return;
+        }
         const fileInput = document.getElementById('file-upload');
         if (fileInput.files.length === 0) {
             this.showDialog('请选择要上传的文件', '提示');
@@ -4475,6 +4498,10 @@ volumes:
     }
 
     async createFile(fileName) {
+        if (!this.currentPath) {
+            this.showToast('根目录不支持新建文件，请先进入某个磁盘或文件夹', 'info');
+            return;
+        }
         try {
             const currentPath = this.currentPath || '';
             const fullPath = currentPath ? `${currentPath}/${fileName}` : fileName;
@@ -4498,6 +4525,10 @@ volumes:
     }
 
     async createFolder(folderName) {
+        if (!this.currentPath) {
+            this.showToast('根目录不支持新建文件夹，请先进入某个磁盘或文件夹', 'info');
+            return;
+        }
         try {
             const currentPath = this.currentPath || '';
             const fullPath = currentPath ? `${currentPath}/${folderName}` : folderName;

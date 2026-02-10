@@ -7,6 +7,7 @@ using Hangfire.Console; // 添加 Logs 支持
 using ChuckieHelper.WebApi.Services.RemoteControl;
 using ChuckieHelper.WebApi.Services; // Add global services namespace
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -132,7 +133,18 @@ namespace WebApplication1
             builder.Services.AddQBittorrentTask();
             builder.Services.AddDdnsTask();
 
+            // 配置转发头，使在 Cloudflare 等反向代理后能正确识别 HTTPS 与原始 Host
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+                options.KnownNetworks.Clear();
+                options.KnownProxies.Clear();
+            });
+
             var app = builder.Build();
+
+            // 必须在管道最前使用，以便后续中间件看到正确的 Scheme/Host
+            app.UseForwardedHeaders();
 
             // 若在 Session 0（IIS）且配置了管理员凭据，创建“登录时以最高权限运行桌面代理”的计划任务（密码可来自配置或环境变量 REMOTECONTROL_ELEVATEDAGENT_PASSWORD）
             if (InteractiveProcessLauncher.IsRunningInSession0)

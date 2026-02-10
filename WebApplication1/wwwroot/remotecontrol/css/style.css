@@ -1660,6 +1660,14 @@ body {
     cursor: pointer;
 }
 
+/* 根目录（磁盘列表）时禁用上传、新建按钮 */
+.file-toolbar-disabled,
+button.file-toolbar-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
 .search-input {
     flex: 1;
     min-width: 200px;
