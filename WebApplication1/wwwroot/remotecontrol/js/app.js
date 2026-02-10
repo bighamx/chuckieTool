@@ -346,6 +346,19 @@ class RemoteControl {
         // Logout
         document.getElementById('logout-btn').addEventListener('click', () => this.logout());
 
+        // 其他标签页登出时（如主站点击 Logout）localStorage 被清除，本页同步登出
+        window.addEventListener('storage', (e) => {
+            if ((e.key === 'token' || e.key === 'username') && e.newValue === null && this.token) {
+                this.syncLogoutFromStorage();
+            }
+        });
+        // 从其他标签页切回时检查 token 是否已被清除
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && this.token && !localStorage.getItem('token')) {
+                this.syncLogoutFromStorage();
+            }
+        });
+
         // Theme Toggle
         document.getElementById('theme-toggle')?.addEventListener('click', () => this.toggleTheme());
 
@@ -857,6 +870,17 @@ class RemoteControl {
         this.disconnectTerminal();
         this.stopAutoRefresh();
         window.location.href = '/Account/Logout';
+    }
+
+    /** 因其他标签页登出导致 localStorage 被清除时，同步本页状态并跳转登录（不写 localStorage，避免循环） */
+    syncLogoutFromStorage() {
+        debugger
+
+        this.token = null;
+        this.username = '';
+        this.disconnectTerminal();
+        this.stopAutoRefresh();
+        window.location.href = '/Account/Login';
     }
 
     showDashboard() {

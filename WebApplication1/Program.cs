@@ -47,7 +47,7 @@ namespace WebApplication1
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-            builder.Services.AddControllersWithViews();
+            builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
 
             // 注册编码提供程序以支持 GBK (需 NuGet 安装 System.Text.Encoding.CodePages)
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
@@ -178,10 +178,18 @@ namespace WebApplication1
                 Authorization = new[] { new ChuckieHelper.WebApi.Filters.HangfireAuthorizationFilter() }
             });
 
-            // Schedule a Recurring Job
-            app.UseHangfireExampleTask();
-            app.UseHangfireQBittorrentTask();
-            app.UseHangfireDdnsTask();
+            // 按实例名称注册 Hangfire 定时任务：Office 仅 DDNS，Home 注册全部
+            var instanceName = (app.Configuration["InstanceName"] ?? "Home").Trim();
+            if (string.Equals(instanceName, "Office", StringComparison.OrdinalIgnoreCase))
+            {
+                app.UseHangfireDdnsTask();
+            }
+            else
+            {
+                app.UseHangfireExampleTask();
+                app.UseHangfireQBittorrentTask();
+                app.UseHangfireDdnsTask();
+            }
 
             app.MapControllerRoute(
                 name: "default",

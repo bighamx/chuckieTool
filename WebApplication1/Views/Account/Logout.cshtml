@@ -1,0 +1,28 @@
+@{
+    Layout = null;
+    var loginUrl = Url.Action("Login", "Account") ?? "/Account/Login";
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>登出中…</title>
+</head>
+<body>
+    <p>正在登出…</p>
+    <span id="logout-redirect" data-url="@loginUrl" style="display:none" aria-hidden="true"></span>
+    <script>
+        (function () {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            var el = document.getElementById('logout-redirect');
+            var url = (el && el.getAttribute('data-url')) || '/Account/Login';
+            window.location.replace(url);
+        })();
+    </script>
+</body>
+</html>
