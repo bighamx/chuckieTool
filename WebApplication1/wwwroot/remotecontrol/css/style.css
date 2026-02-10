@@ -30,7 +30,7 @@
     --text-secondary: #57606a;
     --text-muted: #6e7781;
     --accent-primary: #0969da;
-    --accent-success: #1a7f37;
+    --accent-success: #4ccd71;
     --accent-warning: #9a6700;
     --accent-danger: #cf222e;
     --border-color: #d0d7de;
@@ -80,12 +80,31 @@ body {
 }
 
 @keyframes refreshSpin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+        transform-origin: center center;
+    }
+
+    to {
+        transform: rotate(360deg);
+        transform-origin: center center;
+    }
 }
 
-.btn-refresh .refresh-icon {
-    display: inline-block;
+.btn-refresh .refresh-icon,
+.breadcrumb-refresh-btn .refresh-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4em;
+    height: 1.4em;
+}
+
+.btn-refresh .refresh-icon svg,
+.breadcrumb-refresh-btn .refresh-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
 }
 
 .btn-refresh.refreshing {
@@ -179,7 +198,7 @@ body {
 .btn {
     padding: 10px;
     border-radius: 8px;
-    font-size: 18px;
+    font-size: 14px;
     font-weight: 500;
     border: none;
     cursor: pointer;
@@ -229,6 +248,7 @@ body {
     opacity: 0.85;
     pointer-events: auto;
 }
+
 .btn-primary:hover.btn-loading,
 .btn-primary:disabled:hover {
     transform: none;
@@ -244,6 +264,7 @@ body {
     cursor: not-allowed;
     transform: none !important;
 }
+
 #refresh-info-btn {
     width: 36px;
     height: 36px;
@@ -294,10 +315,11 @@ body {
 
 .btn-sm {
     padding: 8px 16px;
-    font-size: 13px;
+    font-size: 14px;
     height: 36px;
 }
-#theme-toggle{
+
+#theme-toggle {
     width: 36px;
 }
 
@@ -988,7 +1010,7 @@ body {
     flex-shrink: 0;
 }
 
-.sysinfo-basic-item > span:last-child {
+.sysinfo-basic-item>span:last-child {
     color: var(--text-primary);
     font-weight: 500;
     word-break: break-all;
@@ -1034,9 +1056,17 @@ body {
     font-weight: 500;
 }
 
-.sysinfo-card-details .temp-normal { color: #51cf66; }
-.sysinfo-card-details .temp-warm { color: #fcc419; }
-.sysinfo-card-details .temp-hot { color: #ff6b6b; }
+.sysinfo-card-details .temp-normal {
+    color: #51cf66;
+}
+
+.sysinfo-card-details .temp-warm {
+    color: #fcc419;
+}
+
+.sysinfo-card-details .temp-hot {
+    color: #ff6b6b;
+}
 
 /* Scrollbar */
 ::-webkit-scrollbar {
@@ -1149,13 +1179,33 @@ body {
 }
 
 /* 列宽分配 */
-.th-type { width: 60px; }
-.th-name { width: 22%; }
-.th-title { width: 30%; }
-.th-pid { width: 65px; }
-.th-cpu { width: 70px; }
-.th-memory { width: 80px; }
-.th-action { width: 65px; }
+.th-type {
+    width: 60px;
+}
+
+.th-name {
+    width: 22%;
+}
+
+.th-title {
+    width: 30%;
+}
+
+.th-pid {
+    width: 65px;
+}
+
+.th-cpu {
+    width: 70px;
+}
+
+.th-memory {
+    width: 80px;
+}
+
+.th-action {
+    width: 65px;
+}
 
 /* 可排序表头（进程表、容器表共用） */
 .processes-table th.sortable,
@@ -1628,7 +1678,7 @@ body {
 }
 
 .files-breadcrumb {
-    padding: 0 16px;
+    padding: 0 10px;
     height: 42px;
     background: var(--bg-tertiary);
     border-radius: 8px;
@@ -1638,6 +1688,7 @@ body {
     border: 1px solid var(--border-color);
     cursor: text;
     position: relative;
+    padding-right: 2px;
 }
 
 .breadcrumb-items {
@@ -1705,12 +1756,12 @@ body {
     border-radius: 6px;
     background: transparent;
     color: var(--text-secondary);
-    font-size: 18px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: var(--transition);
+    font-size: 14px;
 }
 
 .breadcrumb-refresh-btn:hover {
@@ -1950,6 +2001,7 @@ body {
 .files-table tbody tr.folder-row:hover {
     background: var(--bg-tertiary);
 }
+
 .files-table tbody tr.file-row:hover {
     background: var(--bg-tertiary);
 }
@@ -2164,9 +2216,23 @@ body {
     padding: 0 8px;
     background: var(--bg-secondary);
 }
-.hex-editor-header-offset {width: 110px;min-width: 72px;flex-shrink: 0;}
-.hex-editor-header-hex { flex: 1; min-width: 0; }
-.hex-editor-header-ascii { width: 176px; min-width: 176px; flex-shrink: 0; }
+
+.hex-editor-header-offset {
+    width: 110px;
+    min-width: 72px;
+    flex-shrink: 0;
+}
+
+.hex-editor-header-hex {
+    flex: 1;
+    min-width: 0;
+}
+
+.hex-editor-header-ascii {
+    width: 176px;
+    min-width: 176px;
+    flex-shrink: 0;
+}
 
 /* 三栏主体：强制高度受限才能出现滚动，flex:1+height:0 避免被内容撑开 */
 .hex-editor-panels {
@@ -2185,9 +2251,23 @@ body {
     min-height: 0;
     align-self: stretch;
 }
-.hex-editor-col-offset {width: 120px;min-width: 72px;flex-shrink: 0;}
-.hex-editor-col-hex {flex: 1;min-width: 0;}
-.hex-editor-col-ascii {width: 190px;min-width: 176px;flex-shrink: 0;}
+
+.hex-editor-col-offset {
+    width: 120px;
+    min-width: 72px;
+    flex-shrink: 0;
+}
+
+.hex-editor-col-hex {
+    flex: 1;
+    min-width: 0;
+}
+
+.hex-editor-col-ascii {
+    width: 190px;
+    min-width: 176px;
+    flex-shrink: 0;
+}
 
 .hex-editor-offset,
 .hex-editor-hex,
@@ -2496,7 +2576,8 @@ body {
     max-width: 720px;
     min-height: 420px;
     max-height: 85vh;
-    height: 520px; /* 固定默认高度，列表区内部滚动，避免随文件夹内容变化 */
+    height: 520px;
+    /* 固定默认高度，列表区内部滚动，避免随文件夹内容变化 */
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -3269,6 +3350,7 @@ body {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -3306,7 +3388,8 @@ body {
 /* 强制统一按钮高度 */
 .terminal-status .btn {
     height: 36px;
-    line-height: 1; /* Reset line-height to center properly with flex */
+    line-height: 1;
+    /* Reset line-height to center properly with flex */
     padding: 0 16px;
     font-size: 13px;
     border-radius: 6px;
@@ -3325,7 +3408,8 @@ body {
     border-radius: 14px;
     display: inline-flex;
     align-items: center;
-    margin-left: auto; /* 将状态推到右侧 */
+    margin-left: auto;
+    /* 将状态推到右侧 */
     border: 1px solid transparent;
 }
 
