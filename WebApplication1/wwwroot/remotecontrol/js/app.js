@@ -87,10 +87,6 @@ class RemoteControl {
         this.historyIndex = -1;
         /** 上传队列：{ file, relativePath, progress, status, li } */
         this.uploadQueue = [];
-        // 页面加载时自动获取系统信息
-        document.addEventListener('DOMContentLoaded', () => {
-            this.loadSystemInfo();
-        });
         this.init();
     }
 
@@ -5106,6 +5102,8 @@ let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new RemoteControl();
     // 文件管理器“在当前目录运行控制台”按钮功能
+    app.loadSystemInfo();
+
     const openTerminalBtn = document.getElementById('open-terminal-here-btn');
     if (openTerminalBtn) {
         openTerminalBtn.addEventListener('click', async function () {
