@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 
 namespace ChuckieHelper.WebApi.Services.RemoteControl;
@@ -37,6 +38,39 @@ public class SystemService
 
     [DllImport("user32.dll")]
     private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool OpenClipboard(IntPtr hWndNewOwner);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool CloseClipboard();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetClipboardData(uint uFormat);
+
+    [DllImport("user32.dll")]
+    private static extern bool EmptyClipboard();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GlobalLock(IntPtr hMem);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool GlobalUnlock(IntPtr hMem);
+
+    [DllImport("kernel32.dll")]
+    private static extern UIntPtr GlobalSize(IntPtr hMem);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GlobalAlloc(uint uFlags, UIntPtr dwBytes);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GlobalFree(IntPtr hMem);
+
+    private const uint GMEM_MOVEABLE = 0x0002;
+    private const uint CF_UNICODETEXT = 13;
 
     private const int MOUSEEVENTF_LEFTDOWN = 0x02;
     private const int MOUSEEVENTF_LEFTUP = 0x04;
@@ -1056,6 +1090,117 @@ public class SystemService
         catch (Exception ex)
         {
             Console.WriteLine($"SendKeyboardEvents error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 获取远程剪贴板文本（仅 Windows 支持）
+    /// </summary>
+    public string GetClipboardText()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return "";
+
+        if (IsSession0)
+        {
+            return DesktopAgent.GetClipboardTextAsync().GetAwaiter().GetResult();
+        }
+
+        return GetClipboardTextDirect();
+    }
+
+    /// <summary>
+    /// 设置远程剪贴板文本（仅 Windows 支持）
+    /// </summary>
+    public void SetClipboardText(string text)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return;
+
+        if (IsSession0)
+        {
+            DesktopAgent.SetClipboardTextAsync(text).GetAwaiter().GetResult();
+            return;
+        }
+
+        SetClipboardTextDirect(text);
+    }
+
+    /// <summary>
+    /// 直接读取剪贴板（在交互式会话中调用）
+    /// </summary>
+    internal string GetClipboardTextDirect()
+    {
+        try
+        {
+            if (!OpenClipboard(IntPtr.Zero))
+                return "";
+
+            var hData = GetClipboardData(CF_UNICODETEXT);
+            if (hData == IntPtr.Zero)
+            {
+                CloseClipboard();
+                return "";
+            }
+
+            var p = GlobalLock(hData);
+            if (p == IntPtr.Zero)
+            {
+                CloseClipboard();
+                return "";
+            }
+
+            var size = (int)GlobalSize(hData);
+            var bytes = new byte[size];
+            Marshal.Copy(p, bytes, 0, size);
+            GlobalUnlock(hData);
+            CloseClipboard();
+
+            return Encoding.Unicode.GetString(bytes).TrimEnd('\0');
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetClipboardText error: {ex.Message}");
+            return "";
+        }
+    }
+
+    /// <summary>
+    /// 直接设置剪贴板（在交互式会话中调用）
+    /// </summary>
+    internal void SetClipboardTextDirect(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+
+        try
+        {
+            var bytes = Encoding.Unicode.GetBytes(text + "\0");
+            var hMem = GlobalAlloc(GMEM_MOVEABLE, (UIntPtr)bytes.Length);
+            if (hMem == IntPtr.Zero) return;
+
+            var p = GlobalLock(hMem);
+            if (p == IntPtr.Zero)
+            {
+                GlobalFree(hMem);
+                return;
+            }
+
+            Marshal.Copy(bytes, 0, p, bytes.Length);
+            GlobalUnlock(hMem);
+
+            if (!OpenClipboard(IntPtr.Zero))
+            {
+                GlobalFree(hMem);
+                return;
+            }
+
+            EmptyClipboard();
+            SetClipboardData(CF_UNICODETEXT, hMem);
+            CloseClipboard();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SetClipboardText error: {ex.Message}");
         }
     }
 

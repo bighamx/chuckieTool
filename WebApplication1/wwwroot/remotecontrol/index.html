@@ -514,8 +514,7 @@
                                     <div class="create-dropdown-item" data-action="folder">📁 新建文件夹</div>
                                 </div>
                             </div>
-                            <label for="file-upload" class="btn-icon file-upload-label" title="上传文件">📤</label>
-                            <input type="file" id="file-upload" style="display: none;">
+                            <button type="button" id="upload-btn" class="btn-icon" title="上传文件">📤</button>
                             <span class="files-controls-separator"></span>
                             <button id="bookmark-add-btn" class="btn-icon" title="收藏当前路径">⭐</button>
                             <div class="bookmark-dropdown-wrapper">
@@ -544,7 +543,38 @@
                         </table>
                     </div>
 
-                    <progress id="upload-progress" class="upload-progress" style="display: none;"></progress>
+                </div>
+            </div>
+
+            <!-- 上传文件面板 -->
+            <div id="upload-panel" class="upload-panel" style="display: none;">
+                <div class="upload-panel-container">
+                    <div class="upload-panel-header">
+                        <h3>📤 上传文件</h3>
+                        <button type="button" id="upload-panel-close" class="btn btn-secondary btn-sm">✕</button>
+                    </div>
+                    <div class="upload-panel-dropzone" id="upload-dropzone">
+                        <div class="upload-panel-dropzone-content">
+                            <p>将文件或文件夹拖放到此处</p>
+                            <p class="upload-panel-hint">或点击下方按钮选择</p>
+                            <div class="upload-panel-buttons">
+                                <label for="upload-file-input" class="btn btn-secondary btn-sm">📄 选择文件</label>
+                                <label for="upload-dir-input" class="btn btn-secondary btn-sm">📁 选择文件夹</label>
+                                <input type="file" id="upload-file-input" multiple style="display: none;">
+                                <input type="file" id="upload-dir-input" webkitdirectory multiple style="display: none;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="upload-panel-list-container" id="upload-list-container" style="display: none;">
+                        <div class="upload-panel-list-header">
+                            <span>已选择 <span id="upload-file-count">0</span> 项</span>
+                            <button type="button" id="upload-clear-btn" class="btn btn-secondary btn-sm">清空</button>
+                        </div>
+                        <ul class="upload-panel-list" id="upload-file-list"></ul>
+                    </div>
+                    <div class="upload-panel-footer">
+                        <button type="button" id="upload-start-btn" class="btn btn-primary" disabled>开始上传</button>
+                    </div>
                 </div>
             </div>
 

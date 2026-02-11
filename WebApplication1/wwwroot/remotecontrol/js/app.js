@@ -85,6 +85,8 @@ class RemoteControl {
         ];
         this.commandHistory = [];
         this.historyIndex = -1;
+        /** 上传队列：{ file, relativePath, progress, status, li } */
+        this.uploadQueue = [];
         this.init();
     }
 
@@ -335,7 +337,7 @@ class RemoteControl {
 
         setTimeout(() => {
             toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-8px)';
+            toast.style.transform = 'translateY(-12px)';
             toast.style.transition = 'opacity 0.2s, transform 0.2s';
             setTimeout(() => toast.remove(), 200);
         }, duration);
@@ -680,10 +682,25 @@ class RemoteControl {
                 });
             });
         }
-        const fileUploadBtn = document.getElementById('file-upload');
-        if (fileUploadBtn) {
-            fileUploadBtn.addEventListener('change', () => this.uploadFile());
+        // 上传面板
+        const uploadBtn = document.getElementById('upload-btn');
+        if (uploadBtn) uploadBtn.addEventListener('click', () => this.showUploadPanel());
+        const uploadPanelClose = document.getElementById('upload-panel-close');
+        if (uploadPanelClose) uploadPanelClose.addEventListener('click', () => this.hideUploadPanel());
+        const uploadDropzone = document.getElementById('upload-dropzone');
+        if (uploadDropzone) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
+                uploadDropzone.addEventListener(ev, (e) => this.handleUploadDrop(ev, e));
+            });
         }
+        const uploadFileInput = document.getElementById('upload-file-input');
+        const uploadDirInput = document.getElementById('upload-dir-input');
+        if (uploadFileInput) uploadFileInput.addEventListener('change', (e) => this.addUploadFiles(e.target.files));
+        if (uploadDirInput) uploadDirInput.addEventListener('change', (e) => this.addUploadFiles(e.target.files));
+        const uploadClearBtn = document.getElementById('upload-clear-btn');
+        if (uploadClearBtn) uploadClearBtn.addEventListener('click', () => this.clearUploadList());
+        const uploadStartBtn = document.getElementById('upload-start-btn');
+        if (uploadStartBtn) uploadStartBtn.addEventListener('click', () => this.startUpload());
 
         // 收藏夹
         const bookmarkAddBtn = document.getElementById('bookmark-add-btn');
@@ -1851,6 +1868,25 @@ class RemoteControl {
 
         const vkCode = this.getVirtualKeyCode(e.key, e.code, e.keyCode);
         if (!vkCode) return;
+
+        // Ctrl+C: 发送按键后，将远程剪贴板同步到本地
+        if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) {
+            e.preventDefault();
+            this.sendInput('keyboard', { vkCode: 0xA2, isKeyDown: true }); // Control
+            this.sendInput('keyboard', { vkCode: 0x43, isKeyDown: true });  // C
+            this.sendInput('keyboard', { vkCode: 0x43, isKeyDown: false });
+            this.sendInput('keyboard', { vkCode: 0xA2, isKeyDown: false });
+            setTimeout(() => this.syncRemoteClipboardToLocal(), 220);
+            return;
+        }
+
+        // Ctrl+V: 若本地剪贴板有文本，先同步到远程再发送粘贴
+        if (e.ctrlKey && (e.key === 'v' || e.key === 'V')) {
+            e.preventDefault();
+            this.syncLocalClipboardToRemoteAndPaste();
+            return;
+        }
+
         e.preventDefault();
         this.sendInput('keyboard', { vkCode, isKeyDown: true });
     }
@@ -1863,6 +1899,47 @@ class RemoteControl {
         if (!vkCode) return;
         e.preventDefault();
         this.sendInput('keyboard', { vkCode, isKeyDown: false });
+    }
+
+    /** 获取远程剪贴板文本并写入本地剪贴板 */
+    async syncRemoteClipboardToLocal() {
+        try {
+            const res = await fetch('/api/input/clipboard', {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+            const data = await res.json();
+            if (data?.text && navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(data.text);
+            }
+        } catch (err) {
+            console.warn('syncRemoteClipboardToLocal:', err);
+        }
+    }
+
+    /** 读取本地剪贴板，同步到远程后发送 Ctrl+V */
+    async syncLocalClipboardToRemoteAndPaste() {
+        try {
+            let localText = '';
+            if (navigator.clipboard?.readText) {
+                try { localText = await navigator.clipboard.readText(); } catch (_) { }
+            }
+            if (localText) {
+                await fetch('/api/input/clipboard', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: localText })
+                });
+            }
+            this.sendInput('keyboard', { vkCode: 0xA2, isKeyDown: true });
+            this.sendInput('keyboard', { vkCode: 0x56, isKeyDown: true });
+            this.sendInput('keyboard', { vkCode: 0x56, isKeyDown: false });
+            this.sendInput('keyboard', { vkCode: 0xA2, isKeyDown: false });
+        } catch (err) {
+            console.warn('syncLocalClipboardToRemoteAndPaste:', err);
+        }
     }
 
     /**
@@ -3613,16 +3690,15 @@ volumes:
         const isRoot = this.currentPath === null || this.currentPath === '';
         const createBtn = document.getElementById('create-folder-btn');
         const createWrap = document.querySelector('.create-dropdown-wrapper');
-        const uploadLabel = document.querySelector('.file-upload-label');
+        const uploadBtnEl = document.getElementById('upload-btn');
         if (createBtn) {
             createBtn.disabled = isRoot;
             createBtn.classList.toggle('file-toolbar-disabled', isRoot);
             if (createWrap) createWrap.classList.toggle('file-toolbar-disabled', isRoot);
         }
-        if (uploadLabel) {
-            uploadLabel.classList.toggle('file-toolbar-disabled', isRoot);
-            if (isRoot) uploadLabel.removeAttribute('for');
-            else uploadLabel.setAttribute('for', 'file-upload');
+        if (uploadBtnEl) {
+            uploadBtnEl.classList.toggle('file-toolbar-disabled', isRoot);
+            uploadBtnEl.disabled = isRoot;
         }
     }
 
@@ -4486,51 +4562,258 @@ volumes:
             });
 
             const data = await response.json();
-            this.showDialog(data.message, response.ok ? '成功' : '错误');
+            this.showToast(data.message, response.ok ? 'success' : 'error');
             if (response.ok) {
                 this.loadFiles(this.currentPath || null);
             }
         } catch (error) {
-            this.showDialog('删除失败: ' + error.message, '错误');
+            this.showToast('删除失败: ' + error.message, 'error');
         }
     }
 
-    async uploadFile() {
+    showUploadPanel() {
         if (!this.currentPath) {
             this.showToast('根目录不支持上传，请先进入某个磁盘或文件夹', 'info');
             return;
         }
-        const fileInput = document.getElementById('file-upload');
-        if (fileInput.files.length === 0) {
-            this.showDialog('请选择要上传的文件', '提示');
-            return;
+        this.uploadQueue = [];
+        this.renderUploadList();
+        const panel = document.getElementById('upload-panel');
+        panel.style.display = 'flex';
+        document.getElementById('upload-file-input').value = '';
+        document.getElementById('upload-dir-input').value = '';
+        panel.onclick = (e) => { if (e.target === panel) this.hideUploadPanel(); };
+    }
+
+    hideUploadPanel() {
+        document.getElementById('upload-panel').style.display = 'none';
+    }
+
+    handleUploadDrop(evType, e) {
+        e.preventDefault();
+        e.stopPropagation();
+        document.getElementById('upload-dropzone').classList.remove('drag-over');
+        if (evType === 'drop' && e.dataTransfer) {
+            this.addDroppedItems(e.dataTransfer);
+        } else if (evType === 'dragenter' || evType === 'dragover') {
+            document.getElementById('upload-dropzone').classList.add('drag-over');
+        }
+    }
+
+    /** 处理拖放项：递归解析文件夹，将其中所有文件加入队列。
+     *  须在同步阶段一次性提取 DataTransfer 数据，避免 await 后 items 被浏览器清除。 */
+    async addDroppedItems(dataTransfer) {
+        const toAdd = [];
+        const paths = new Set();
+
+        const addUnique = (file, relativePath) => {
+            if (paths.has(relativePath)) return;
+            paths.add(relativePath);
+            toAdd.push({ file, relativePath });
+        };
+
+        const entriesToProcess = [];
+        const getEntry = (item) => item.webkitGetAsEntry?.() ?? item.getAsEntry?.();
+
+        // 1. 优先处理 dataTransfer.items，支持递归文件夹（webkitGetAsEntry），可获取目录结构
+        //    适用于 Chrome/Edge/部分现代浏览器，能正确递归拖入的文件夹内容
+        if (dataTransfer?.items?.length) {
+            const itemsArray = Array.from(dataTransfer.items);
+            for (let i = 0; i < itemsArray.length; i++) {
+                const item = itemsArray[i];
+                // 只处理文件类型的 item
+                if (item.kind !== 'file') continue;
+                // 通过 webkitGetAsEntry 获取目录/文件入口，后续递归
+                const entry = getEntry(item);
+                if (entry) entriesToProcess.push(entry);
+            }
         }
 
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-
-        const currentPath = this.currentPath || '';
-        const url = currentPath ? `/api/files/upload?path=${encodeURIComponent(currentPath)}` : '/api/files/upload';
-        const progressBar = document.getElementById('upload-progress');
-        progressBar.style.display = 'block';
-
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${this.token}` },
-                body: formData
-            });
-
-            const data = await response.json();
-            this.showDialog(data.message);
-            if (response.ok) {
-                fileInput.value = '';
-                progressBar.style.display = 'none';
-                this.loadFiles(currentPath || null);
+        // 2. 兼容性补充：遍历 dataTransfer.files，直接获取所有文件对象
+        //    适用于 Firefox/部分浏览器或某些场景（如 input[type=file] 拖拽），无法递归目录，仅能获取文件本身
+        //    注意：files 不包含目录结构，仅有所有文件，不能判断文件夹
+        if (dataTransfer?.files?.length) {
+            const filesArray = Array.from(dataTransfer.files);
+            for (let i = 0; i < filesArray.length; i++) {
+                const file = filesArray[i];
+                const relPath = file.webkitRelativePath || file.name;
+                // 跳过空目录占位符（webkitdirectory 拖拽时可能出现）
+                if (file.size === 0 && !/\./.test(file.name) && !relPath.includes('/')) continue;
+                addUnique(file, relPath);
             }
-        } catch (error) {
-            progressBar.style.display = 'none';
-            this.showDialog('上传失败: ' + error.message, '错误');
+        }
+        // 不能合并两段循环：
+        // - items 支持递归目录，files 只包含文件，内容和顺序不保证一一对应
+        // - 某些浏览器只支持其中一个，需分别处理，保证兼容性和完整性
+
+        for (let i = 0; i < entriesToProcess.length; i++) {
+            const collected = await this.readEntriesRecursive(entriesToProcess[i], '');
+            for (const { file, relativePath } of collected) addUnique(file, relativePath);
+        }
+
+        for (const { file, relativePath } of toAdd) {
+            if (this.uploadQueue.some(q => q.relativePath === relativePath)) continue;
+            this.uploadQueue.push({ file, relativePath, progress: 0, status: 'pending' });
+        }
+        this.renderUploadList();
+    }
+
+    /** 递归读取 FileSystemEntry，返回 { file, relativePath } 数组 */
+    async readEntriesRecursive(entry, basePath) {
+        const results = [];
+        const path = basePath ? basePath + '/' + entry.name : entry.name;
+        if (entry.isFile) {
+            const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+            results.push({ file, relativePath: path });
+        } else if (entry.isDirectory) {
+            const reader = entry.createReader();
+            let entries = [];
+            do {
+                entries = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+                for (const e of entries) {
+                    const sub = await this.readEntriesRecursive(e, path);
+                    results.push(...sub);
+                }
+            } while (entries.length > 0);
+        }
+        return results;
+    }
+
+    addUploadFiles(fileList) {
+        if (!fileList?.length) return;
+        for (let i = 0; i < fileList.length; i++) {
+            const file = fileList[i];
+            const relPath = file.webkitRelativePath || file.name;
+            // 跳过目录占位符：webkitRelativePath 无斜杠表示选中的是文件夹本身
+            if (file.webkitRelativePath && !file.webkitRelativePath.includes('/')) continue;
+            if (this.uploadQueue.some(q => q.relativePath === relPath)) continue;
+            this.uploadQueue.push({ file, relativePath: relPath, progress: 0, status: 'pending' });
+        }
+        this.renderUploadList();
+    }
+
+    clearUploadList() {
+        this.uploadQueue = [];
+        this.renderUploadList();
+    }
+
+    renderUploadList() {
+        const container = document.getElementById('upload-list-container');
+        const list = document.getElementById('upload-file-list');
+        const countEl = document.getElementById('upload-file-count');
+        const startBtn = document.getElementById('upload-start-btn');
+        if (!this.uploadQueue.length) {
+            container.style.display = 'none';
+            startBtn.disabled = true;
+            return;
+        }
+        container.style.display = 'block';
+        countEl.textContent = this.uploadQueue.length;
+        startBtn.disabled = this.uploadQueue.some(q => q.status === 'uploading');
+        list.innerHTML = '';
+        this.uploadQueue.forEach((item, idx) => {
+            const li = document.createElement('li');
+            item.li = li;
+            const isDir = item.file instanceof File && item.file.size === 0 && item.webkitRelativePath;
+            li.innerHTML = `
+                <span class="upload-panel-item-name" title="${this.escapeHtml(item.relativePath)}">${this.escapeHtml(item.relativePath)}</span>
+                <span class="upload-panel-item-type">${item.file.size ? this.formatFileSize(item.file.size) : '-'}</span>
+                <div class="upload-panel-item-progress">
+                    <span>${item.progress}%</span>
+                    <div class="upload-panel-item-progress-bar"><div class="upload-panel-item-progress-fill" style="width:${item.progress}%"></div></div>
+                </div>
+                <span class="upload-panel-item-status" data-status="${item.status}">${item.status === 'pending' ? '等待' : item.status === 'uploading' ? '上传中' : item.status === 'success' ? '完成' : item.status === 'error' ? '失败' : ''}</span>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    async startUpload() {
+        if (!this.currentPath || !this.uploadQueue.length) return;
+        const basePath = this.currentPath.replace(/\\/g, '/');
+        const url = `/api/files/upload?path=${encodeURIComponent(basePath)}`;
+        const startBtn = document.getElementById('upload-start-btn');
+        startBtn.disabled = true;
+
+        for (const item of this.uploadQueue) {
+            if (item.status !== 'pending') continue;
+            item.status = 'uploading';
+            item.progress = 0;
+            this.updateUploadItemUI(item);
+
+            const relPath = item.relativePath.replace(/\\/g, '/');
+            let fileToSend = item.file;
+            // 来自 webkitdirectory 的 File 直接上传可能触发 ERR_ACCESS_DENIED，转为新 File 规避
+            if (item.file.webkitRelativePath) {
+                try {
+                    const buf = await item.file.arrayBuffer();
+                    fileToSend = new File([buf], item.file.name, { type: item.file.type });
+                } catch (_) {
+                    item.status = 'error';
+                    this.updateUploadItemUI(item);
+                    continue;
+                }
+            }
+            const formData = new FormData();
+            formData.append('file', fileToSend);
+            formData.append('relativePath', relPath);
+
+            try {
+                const xhr = new XMLHttpRequest();
+                await new Promise((resolve, reject) => {
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) {
+                            item.progress = Math.round((e.loaded / e.total) * 100);
+                            this.updateUploadItemUI(item);
+                        }
+                    });
+                    xhr.addEventListener('load', () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            item.status = 'success';
+                            item.progress = 100;
+                        } else {
+                            item.status = 'error';
+                        }
+                        this.updateUploadItemUI(item);
+                        resolve();
+                    });
+                    xhr.addEventListener('error', () => {
+                        item.status = 'error';
+                        this.updateUploadItemUI(item);
+                        reject(new Error('网络错误'));
+                    });
+                    xhr.open('POST', url);
+                    xhr.setRequestHeader('Authorization', `Bearer ${this.token}`);
+                    xhr.send(formData);
+                });
+            } catch (err) {
+                item.status = 'error';
+                this.updateUploadItemUI(item);
+            }
+        }
+
+        startBtn.disabled = false;
+        const hasError = this.uploadQueue.some(q => q.status === 'error');
+        const allDone = this.uploadQueue.every(q => q.status === 'success' || q.status === 'error');
+        if (allDone) {
+            this.loadFiles(this.currentPath || null);
+            this.showToast(hasError ? '部分文件上传失败' : '上传完成', hasError ? 'error' : 'success');
+        }
+    }
+
+    updateUploadItemUI(item) {
+        const li = item.li;
+        if (!li) return;
+        const progressWrap = li.querySelector('.upload-panel-item-progress');
+        const statusEl = li.querySelector('.upload-panel-item-status');
+        if (progressWrap) {
+            progressWrap.querySelector('span').textContent = item.progress + '%';
+            progressWrap.querySelector('.upload-panel-item-progress-fill').style.width = item.progress + '%';
+        }
+        if (statusEl) {
+            statusEl.dataset.status = item.status;
+            statusEl.textContent = item.status === 'pending' ? '等待' : item.status === 'uploading' ? '上传中' : item.status === 'success' ? '完成' : item.status === 'error' ? '失败' : '';
+            statusEl.className = 'upload-panel-item-status' + (item.status === 'success' ? ' success' : item.status === 'error' ? ' error' : '');
         }
     }
 

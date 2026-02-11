@@ -139,6 +139,8 @@ public static class DesktopAgent
                 "screen_bounds" => HandleScreenBounds(systemService),
                 "launch_ffmpeg" => HandleLaunchFFmpeg(root),
                 "enum_windows" => HandleEnumWindows(),
+                "clipboard_get" => HandleClipboardGet(systemService),
+                "clipboard_set" => HandleClipboardSet(root, systemService),
                 "ping" => Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { ok = true, version = ProtocolVersion })),
                 _ => ErrorResponse($"未知命令类型: {type}")
             };
@@ -232,6 +234,19 @@ public static class DesktopAgent
     private static byte[] HandleLock(SystemService svc)
     {
         svc.LockWorkstation();
+        return OkResponse();
+    }
+
+    private static byte[] HandleClipboardGet(SystemService svc)
+    {
+        var text = svc.GetClipboardTextDirect();
+        return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { ok = true, text }));
+    }
+
+    private static byte[] HandleClipboardSet(JsonElement root, SystemService svc)
+    {
+        var text = root.GetProperty("text").GetString() ?? "";
+        svc.SetClipboardTextDirect(text);
         return OkResponse();
     }
 
@@ -790,6 +805,43 @@ public static class DesktopAgent
     {
         await EnsureAgentRunningAsync();
         await SendCommandInternalAsync("{\"type\":\"lock\"}", TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>
+    /// 通过代理获取远程剪贴板文本
+    /// </summary>
+    public static async Task<string> GetClipboardTextAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            await EnsureAgentRunningAsync();
+            var response = await SendCommandInternalAsync("{\"type\":\"clipboard_get\"}", TimeSpan.FromSeconds(3));
+            if (response == null || response.Length == 0) return "";
+
+            var json = Encoding.UTF8.GetString(response);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("text", out var textEl))
+                return textEl.GetString() ?? "";
+            return "";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DesktopAgent] GetClipboardText error: {ex.Message}");
+            return "";
+        }
+    }
+
+    /// <summary>
+    /// 通过代理设置远程剪贴板文本
+    /// </summary>
+    public static async Task SetClipboardTextAsync(string text, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        await EnsureAgentRunningAsync();
+        await SendCommandInternalAsync(
+            JsonSerializer.Serialize(new { type = "clipboard_set", text }),
+            TimeSpan.FromSeconds(3));
     }
 
     /// <summary>

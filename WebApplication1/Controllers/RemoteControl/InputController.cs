@@ -125,6 +125,27 @@ public class InputController : ControllerBase
         _systemService.SendMouseWheel(request.X, request.Y, request.Delta);
         return Ok(new { message = "Mouse wheel sent" });
     }
+
+    /// <summary>获取远程剪贴板文本（用于 Ctrl+C 同步到本地）</summary>
+    [HttpGet("clipboard")]
+    public IActionResult GetClipboard()
+    {
+        var text = _systemService.GetClipboardText();
+        return Ok(new { text });
+    }
+
+    /// <summary>设置远程剪贴板文本（用于 Ctrl+V 从本地同步到远程）</summary>
+    [HttpPost("clipboard")]
+    public IActionResult SetClipboard([FromBody] ClipboardRequest request)
+    {
+        _systemService.SetClipboardText(request.Text ?? "");
+        return Ok(new { message = "Clipboard set" });
+    }
+}
+
+public class ClipboardRequest
+{
+    public string? Text { get; set; }
 }
 
 public class ClickRequest

@@ -375,7 +375,7 @@ public class FilesController : ControllerBase
     }
 
     /// <summary>
-    /// 上传文件
+    /// 上传文件（支持二进制、相对路径、子目录自动创建）
     /// </summary>
     [HttpPost("upload")]
     public async Task<IActionResult> UploadFile([FromQuery] string path)
@@ -394,19 +394,33 @@ public class FilesController : ControllerBase
             }
 
             var file = files[0];
-            var uploadPath = System.IO.Path.Combine(path, file.FileName);
-
-            using (var stream = new MemoryStream())
+            var relativePath = Request.Form["relativePath"].FirstOrDefault() ?? file.FileName ?? "";
+            if (string.IsNullOrWhiteSpace(relativePath))
             {
-                await file.CopyToAsync(stream);
-                var fileBytes = stream.ToArray();
-                var content = System.Text.Encoding.UTF8.GetString(fileBytes);
-                var result = await _fileService.WriteFileAsync(uploadPath, content);
+                return BadRequest(new { message = "Invalid file name" });
+            }
 
-                if (result)
-                {
-                    return Ok(new { message = "File uploaded successfully", fileName = file.FileName });
-                }
+            var basePath = path.Replace('/', Path.DirectorySeparatorChar).TrimEnd(Path.DirectorySeparatorChar);
+            // Windows 盘符根路径需保留尾部反斜杠，否则 Path.Combine("D:", "x") 会得到 "D:x"
+            if (basePath.Length == 2 && basePath[1] == ':' && char.IsLetter(basePath[0]))
+                basePath += Path.DirectorySeparatorChar;
+            var fullPath = Path.Combine(basePath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            fullPath = Path.GetFullPath(fullPath);
+
+            var dirPath = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(dirPath) && !Directory.Exists(dirPath))
+            {
+                _fileService.CreateDirectory(dirPath);
+            }
+
+            using var stream = new MemoryStream();
+            await file.CopyToAsync(stream);
+            var fileBytes = stream.ToArray();
+            var result = await _fileService.WriteFileFromBytesAsync(fullPath, fileBytes);
+
+            if (result)
+            {
+                return Ok(new { message = "File uploaded successfully", fileName = Path.GetFileName(fullPath) });
             }
 
             return BadRequest(new { message = "Failed to upload file" });

@@ -47,6 +47,19 @@ namespace WebApplication1
 
             var builder = WebApplication.CreateBuilder(args);
 
+            // 上传文件大小限制（默认 500MB，可在 appsettings 中通过 FileUpload:MaxSizeMB 覆盖）
+            var maxUploadMb = builder.Configuration.GetValue<int>("FileUpload:MaxSizeMB", 500);
+            var maxUploadBytes = (long)maxUploadMb * 1024 * 1024;
+
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.Limits.MaxRequestBodySize = maxUploadBytes;
+            });
+            builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+            {
+                options.MultipartBodyLengthLimit = maxUploadBytes;
+            });
+
             // Add services to the container.
             builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
 

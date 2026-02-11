@@ -2136,6 +2136,173 @@ button.file-toolbar-disabled {
     border-radius: 2px;
 }
 
+/* 上传文件面板 */
+.upload-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9998;
+    padding: 20px;
+    animation: fadeIn 0.2s ease;
+}
+
+.upload-panel-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.upload-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.upload-panel-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.upload-panel-dropzone {
+    padding: 32px 24px;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    margin: 16px 20px;
+    text-align: center;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.upload-panel-dropzone:hover,
+.upload-panel-dropzone.drag-over {
+    border-color: var(--accent-primary);
+    background: rgba(88, 166, 255, 0.08);
+}
+
+.upload-panel-dropzone-content p {
+    margin: 8px 0;
+    color: var(--text-secondary);
+}
+
+.upload-panel-hint {
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+.upload-panel-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+.upload-panel-list-container {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    margin: 0 20px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.upload-panel-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 14px;
+}
+
+.upload-panel-list {
+    list-style: none;
+    margin: 0;
+    padding: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.upload-panel-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.upload-panel-list li:hover {
+    background: var(--bg-tertiary);
+}
+
+.upload-panel-item-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.upload-panel-item-type {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.upload-panel-item-progress {
+    flex: 0 0 100px;
+    font-size: 12px;
+}
+
+.upload-panel-item-progress-bar {
+    height: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.upload-panel-item-progress-fill {
+    height: 100%;
+    background: var(--accent-primary);
+    transition: width 0.2s;
+}
+
+.upload-panel-item-status {
+    flex: 0 0 60px;
+    font-size: 12px;
+    text-align: right;
+}
+
+.upload-panel-item-status.success {
+    color: var(--success-color, #4ade80);
+}
+
+.upload-panel-item-status.error {
+    color: var(--danger-color, #f87171);
+}
+
+.upload-panel-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-color);
+}
+
 /* 文件编辑器模态框 */
 .file-editor {
     position: fixed;
@@ -3354,7 +3521,7 @@ button.file-toolbar-disabled {
 /* Toast 轻提示 */
 .toast-container {
     position: fixed;
-    bottom: 24px;
+    top: 24px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 10001;
@@ -3395,7 +3562,7 @@ button.file-toolbar-disabled {
 @keyframes toastIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(-10px);
     }
 
     to {
