@@ -3703,7 +3703,7 @@ volumes:
         const createBtn = document.getElementById('create-folder-btn');
         const createWrap = document.querySelector('.create-dropdown-wrapper');
         const uploadBtnEl = document.getElementById('upload-btn');
-        const terminalBtnEl = document.getElementById('open-terminal-btn');
+        const terminalBtnEl = document.getElementById('open-terminal-here-btn');
         if (createBtn) {
             createBtn.disabled = disableToolbar;
             createBtn.classList.toggle('file-toolbar-disabled', disableToolbar);
