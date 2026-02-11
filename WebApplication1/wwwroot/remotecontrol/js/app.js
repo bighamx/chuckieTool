@@ -87,6 +87,10 @@ class RemoteControl {
         this.historyIndex = -1;
         /** 上传队列：{ file, relativePath, progress, status, li } */
         this.uploadQueue = [];
+        // 页面加载时自动获取系统信息
+        document.addEventListener('DOMContentLoaded', () => {
+            this.loadSystemInfo();
+        });
         this.init();
     }
 
@@ -970,6 +974,13 @@ class RemoteControl {
         // 更新 URL hash（除非是从 hash 恢复时调用）
         if (!skipHashUpdate) {
             this.updateHash();
+        }
+        // 切换到 terminal tab 时，确保终端类型选择框根据平台类型设置
+        if (tabName === 'terminal') {
+            // 若平台信息未加载，重新获取
+            if (!this.platform) {
+                this.loadSystemInfo();
+            }
         }
     }
 
@@ -4599,9 +4610,8 @@ volumes:
             document.getElementById('upload-dropzone').classList.add('drag-over');
         }
     }
-
     /** 处理拖放项：递归解析文件夹，将其中所有文件加入队列。
-     *  须在同步阶段一次性提取 DataTransfer 数据，避免 await 后 items 被浏览器清除。 */
+         *  须在同步阶段一次性提取 DataTransfer 数据，避免 await 后 items 被浏览器清除。 */
     async addDroppedItems(dataTransfer) {
         const toAdd = [];
         const paths = new Set();
@@ -5082,5 +5092,50 @@ volumes:
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new RemoteControl();
+    // 文件管理器“在当前目录运行控制台”按钮功能
+    const openTerminalBtn = document.getElementById('open-terminal-here-btn');
+    if (openTerminalBtn) {
+        openTerminalBtn.addEventListener('click', async function () {
+            // 切换到命令终端tab
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector('.tab[data-tab="terminal"]').classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(tabContent => tabContent.classList.remove('active'));
+            document.getElementById('terminal-tab').classList.add('active');
+
+            // 自动连接终端（如果有连接按钮）
+            const terminalToggleBtn = document.getElementById('terminal-toggle-btn');
+            if (terminalToggleBtn && terminalToggleBtn.innerText.includes('连接')) {
+                terminalToggleBtn.click();
+                // 等待连接完成（简单延迟，实际可根据状态优化）
+                await new Promise(resolve => setTimeout(resolve, 400));
+            }
+
+            // 获取当前文件管理器目录
+            let currentPath = '';
+            const breadcrumbInput = document.getElementById('breadcrumb-input');
+            if (breadcrumbInput && breadcrumbInput.style.display !== 'none') {
+                currentPath = breadcrumbInput.value;
+            } else {
+                // 从面包屑获取
+                const items = document.querySelectorAll('#breadcrumb-items .breadcrumb-item');
+                if (items.length > 1) {
+                    currentPath = Array.from(items).slice(1).map(btn => btn.innerText).join('/');
+                } else {
+                    currentPath = '/';
+                }
+            }
+
+            // 切换终端当前目录（自动发送cd命令）
+            const terminalInput = document.getElementById('terminal-input');
+            if (terminalInput && currentPath) {
+                terminalInput.value = `cd "${currentPath}"`;
+                // 触发输入事件
+                terminalInput.dispatchEvent(new Event('input', { bubbles: true }));
+                // 触发回车发送
+                terminalInput.focus();
+                terminalInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
+            }
+        });
+    }
 });
 
