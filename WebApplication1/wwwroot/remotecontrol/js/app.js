@@ -3699,17 +3699,23 @@ volumes:
     /** 根目录（磁盘列表）时禁用上传、新建；进入文件夹后启用 */
     updateFilesToolbarState() {
         const isRoot = this.currentPath === null || this.currentPath === '';
+        const disableToolbar = isRoot;
         const createBtn = document.getElementById('create-folder-btn');
         const createWrap = document.querySelector('.create-dropdown-wrapper');
         const uploadBtnEl = document.getElementById('upload-btn');
+        const terminalBtnEl = document.getElementById('open-terminal-btn');
         if (createBtn) {
-            createBtn.disabled = isRoot;
-            createBtn.classList.toggle('file-toolbar-disabled', isRoot);
-            if (createWrap) createWrap.classList.toggle('file-toolbar-disabled', isRoot);
+            createBtn.disabled = disableToolbar;
+            createBtn.classList.toggle('file-toolbar-disabled', disableToolbar);
+            if (createWrap) createWrap.classList.toggle('file-toolbar-disabled', disableToolbar);
         }
         if (uploadBtnEl) {
-            uploadBtnEl.classList.toggle('file-toolbar-disabled', isRoot);
-            uploadBtnEl.disabled = isRoot;
+            uploadBtnEl.classList.toggle('file-toolbar-disabled', disableToolbar);
+            uploadBtnEl.disabled = disableToolbar;
+        }
+        if (terminalBtnEl) {
+            terminalBtnEl.classList.toggle('file-toolbar-disabled', disableToolbar);
+            terminalBtnEl.disabled = disableToolbar;
         }
     }
 
