@@ -3699,7 +3699,9 @@ volumes:
     /** 根目录（磁盘列表）时禁用上传、新建；进入文件夹后启用 */
     updateFilesToolbarState() {
         const isRoot = this.currentPath === null || this.currentPath === '';
-        const disableToolbar = isRoot;
+        const isWindows = this.platform && this.platform.toLowerCase().includes('windows');
+        // 仅在 Windows 根目录禁用工具栏，Linux 根目录允许所有操作
+        const disableToolbar = isWindows && isRoot;
         const createBtn = document.getElementById('create-folder-btn');
         const createWrap = document.querySelector('.create-dropdown-wrapper');
         const uploadBtnEl = document.getElementById('upload-btn');
@@ -3714,11 +3716,12 @@ volumes:
             uploadBtnEl.disabled = disableToolbar;
         }
         if (terminalBtnEl) {
-            if (this.platform == 'Linux') {
-
-            } else {
+            if (isWindows) {
                 terminalBtnEl.classList.toggle('file-toolbar-disabled', disableToolbar);
                 terminalBtnEl.disabled = disableToolbar;
+            } else {
+                terminalBtnEl.classList.remove('file-toolbar-disabled');
+                terminalBtnEl.disabled = false;
             }
         }
     }
