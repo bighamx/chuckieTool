@@ -3714,8 +3714,12 @@ volumes:
             uploadBtnEl.disabled = disableToolbar;
         }
         if (terminalBtnEl) {
-            terminalBtnEl.classList.toggle('file-toolbar-disabled', disableToolbar);
-            terminalBtnEl.disabled = disableToolbar;
+            if (this.platform == 'Linux') {
+
+            } else {
+                terminalBtnEl.classList.toggle('file-toolbar-disabled', disableToolbar);
+                terminalBtnEl.disabled = disableToolbar;
+            }
         }
     }
 
